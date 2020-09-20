@@ -93,26 +93,26 @@ func parseConfig() {
 						return err
 					}
 
-					fmt.Println(replacementMap)
 					for k, v := range replacementMap {
 						var parseFiles func(string, []os.FileInfo) error
 						parseFiles = func(path string, files []os.FileInfo) error {
 							for _, file := range files {
+								fileName := file.Name()
 								re := regexp.MustCompile(k)
-								_ = re
-								_ = v
-								if re.MatchString(filepath.Join(path, file.Name())) {
-									err := os.Rename(filepath.Join(path, file.Name()), re.ReplaceAllString(filepath.Join(path, file.Name()), v))
+								if re.MatchString(filepath.Join(path, fileName)) {
+									replacedName := re.ReplaceAllString(fileName, v)
+									err := os.Rename(filepath.Join(path, fileName), filepath.Join(path, replacedName))
 									if err != nil {
 										return err
 									}
+									fileName = replacedName
 								}
 								if file.IsDir() {
-									filestmp, err := ioutil.ReadDir(filepath.Join(path, file.Name()))
+									filestmp, err := ioutil.ReadDir(filepath.Join(path, fileName))
 									if err != nil {
 										return err
 									}
-									err = parseFiles(filepath.Join(path, file.Name()), filestmp)
+									err = parseFiles(filepath.Join(path, fileName), filestmp)
 									if err != nil {
 										return err
 									}
