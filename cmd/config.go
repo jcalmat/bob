@@ -28,8 +28,6 @@ type Template struct {
 }
 
 func parseConfig() {
-	// fmt.Println("Using config file:", viper.ConfigFileUsed())
-
 	Commands = make([]Command, 0)
 	Templates = make(map[string]Template)
 
@@ -45,7 +43,7 @@ func parseConfig() {
 	for k := range vts {
 		Templates[k] = Template{
 			Path:      viper.GetString(fmt.Sprintf("templates.%s.path", k)),
-			Variables: viper.GetStringSlice(fmt.Sprintf("templates.%s.replacementMap", k)),
+			Variables: viper.GetStringSlice(fmt.Sprintf("templates.%s.variables", k)),
 		}
 	}
 
@@ -95,13 +93,37 @@ func parseConfig() {
 						return err
 					}
 
+					fmt.Println(replacementMap)
 					for k, v := range replacementMap {
-						for _, file := range files {
-							re := regexp.MustCompile(k)
-							_ = re
-							_ = v
-							// os.Rename(file, re.ReplaceAllString(file.Name(), v))
-							fmt.Println(file.Name())
+						var parseFiles func(string, []os.FileInfo) error
+						parseFiles = func(path string, files []os.FileInfo) error {
+							for _, file := range files {
+								re := regexp.MustCompile(k)
+								_ = re
+								_ = v
+								if re.MatchString(filepath.Join(path, file.Name())) {
+									err := os.Rename(filepath.Join(path, file.Name()), re.ReplaceAllString(filepath.Join(path, file.Name()), v))
+									if err != nil {
+										return err
+									}
+								}
+								if file.IsDir() {
+									filestmp, err := ioutil.ReadDir(filepath.Join(path, file.Name()))
+									if err != nil {
+										return err
+									}
+									err = parseFiles(filepath.Join(path, file.Name()), filestmp)
+									if err != nil {
+										return err
+									}
+								}
+							}
+							return nil
+						}
+
+						err = parseFiles(dir, files)
+						if err != nil {
+							return err
 						}
 						// ret, err := Exec("find", ". -type f -print0 | xargs -0 sed -i 's/", k, "/", v, "/g'")
 						// if err != nil {
