@@ -1,8 +1,14 @@
 package cmd
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -22,7 +28,7 @@ type Template struct {
 }
 
 func parseConfig() {
-	fmt.Println("Using config file:", viper.ConfigFileUsed())
+	// fmt.Println("Using config file:", viper.ConfigFileUsed())
 
 	Commands = make([]Command, 0)
 	Templates = make(map[string]Template)
@@ -39,12 +45,13 @@ func parseConfig() {
 	for k := range vts {
 		Templates[k] = Template{
 			Path:      viper.GetString(fmt.Sprintf("templates.%s.path", k)),
-			Variables: viper.GetStringSlice(fmt.Sprintf("templates.%s.variables", k)),
+			Variables: viper.GetStringSlice(fmt.Sprintf("templates.%s.replacementMap", k)),
 		}
 	}
 
 	//TODO: Find a way to move this somewhere else
 	for _, c := range Commands {
+		c := c
 		buildCmd.AddCommand(&cobra.Command{
 			Use: c.Alias,
 			RunE: func(cmd *cobra.Command, args []string) error {
@@ -55,23 +62,62 @@ func parseConfig() {
 						continue
 					}
 
-					PrintTitle("Info")
+					PrintTitle(c.Alias)
 
-					fmt.Println("Using template path: ", t.Path)
+					fmt.Printf("Using template path: %s\n\n", t.Path)
 
-					path := Ask("Where do you want to build your code? ")
+					path := Ask("Where do you want to build your code (path)? ")
 
-					variables := make(map[string]string)
+					replacementMap := make(map[string]string)
 
 					PrintTitle("Variable replacement")
 
 					for _, v := range t.Variables {
-						variables[v] = Ask(fmt.Sprintf("%s: ", v))
+						replacementMap[v] = Ask(fmt.Sprintf("%s: ", v))
 					}
 
-					fmt.Printf("%v\n", variables)
-					cmd := exec.Command("ls", path)
-					err := cmd.Run()
+					// create a tmp dir to revert the operation if an error occures
+					dir, err := ioutil.TempDir("", "bob")
+					if err != nil {
+						return err
+					}
+					defer os.RemoveAll(dir) // clean up
+
+					//TODO: Replace by actual golang code
+					cmd := exec.Command("cp", "-R", t.Path, dir)
+					err = cmd.Run()
+					if err != nil {
+						return err
+					}
+
+					files, err := ioutil.ReadDir(dir)
+					if err != nil {
+						return err
+					}
+
+					for k, v := range replacementMap {
+						for _, file := range files {
+							re := regexp.MustCompile(k)
+							_ = re
+							_ = v
+							// os.Rename(file, re.ReplaceAllString(file.Name(), v))
+							fmt.Println(file.Name())
+						}
+						// ret, err := Exec("find", ". -type f -print0 | xargs -0 sed -i 's/", k, "/", v, "/g'")
+						// if err != nil {
+						// 	return err
+						// }
+						// fmt.Println(ret)
+
+						// os.Rename()
+						// ret, err := Exec(rename -n 's/hello/hi/g' $(find /home/devel/stuff/static/ -type f))
+					}
+
+					absPath, err := filepath.Abs(path)
+					if err != nil {
+						return err
+					}
+					err = os.Rename(filepath.Join(dir, files[0].Name()), filepath.Join(absPath, filepath.Base(files[0].Name())))
 					if err != nil {
 						return err
 					}
@@ -90,5 +136,19 @@ func Ask(question string) string {
 }
 
 func PrintTitle(title string) {
-	fmt.Printf("==== %s ====\n", title)
+	fmt.Printf("\n\n==== %s ====\n\n", title)
+}
+
+func Exec(name string, args ...string) (string, error) {
+	var stderr bytes.Buffer
+	var stdout bytes.Buffer
+	cmd := exec.Command(name, args...)
+	cmd.Stderr = &stderr
+	cmd.Stdout = &stdout
+	err := cmd.Run()
+	if err != nil {
+		return "", errors.New(stderr.String())
+	}
+	fmt.Print(stdout.String())
+	return stdout.String(), nil
 }
