@@ -53,14 +53,15 @@ func parseConfig() {
 		buildCmd.AddCommand(&cobra.Command{
 			Use: c.Alias,
 			RunE: func(cmd *cobra.Command, args []string) error {
+
+				PrintTitle(c.Alias)
+
 				for _, s := range c.Templates {
 					t, ok := Templates[s]
 					if !ok {
 						fmt.Printf("Template %s not found, skipping", s)
 						continue
 					}
-
-					PrintTitle(c.Alias)
 
 					fmt.Printf("Using template path: %s\n\n", t.Path)
 
@@ -94,11 +95,13 @@ func parseConfig() {
 					}
 
 					for k, v := range replacementMap {
+						// remplace the folders and files names recursively
 						var parseFiles func(string, []os.FileInfo) error
 						parseFiles = func(path string, files []os.FileInfo) error {
 							for _, file := range files {
 								fileName := file.Name()
 								re := regexp.MustCompile(k)
+								// replace matching key in file/folder name
 								if re.MatchString(filepath.Join(path, fileName)) {
 									replacedName := re.ReplaceAllString(fileName, v)
 									err := os.Rename(filepath.Join(path, fileName), filepath.Join(path, replacedName))
@@ -108,11 +111,22 @@ func parseConfig() {
 									fileName = replacedName
 								}
 								if file.IsDir() {
+									// go deeper in recursion
 									filestmp, err := ioutil.ReadDir(filepath.Join(path, fileName))
 									if err != nil {
 										return err
 									}
 									err = parseFiles(filepath.Join(path, fileName), filestmp)
+									if err != nil {
+										return err
+									}
+								} else {
+									// replace matching key in file
+									b, err := ioutil.ReadFile(filepath.Join(path, fileName))
+									if err != nil {
+										return err
+									}
+									err = ioutil.WriteFile(filepath.Join(path, fileName), re.ReplaceAll(b, []byte(v)), file.Mode().Perm())
 									if err != nil {
 										return err
 									}
@@ -125,14 +139,6 @@ func parseConfig() {
 						if err != nil {
 							return err
 						}
-						// ret, err := Exec("find", ". -type f -print0 | xargs -0 sed -i 's/", k, "/", v, "/g'")
-						// if err != nil {
-						// 	return err
-						// }
-						// fmt.Println(ret)
-
-						// os.Rename()
-						// ret, err := Exec(rename -n 's/hello/hi/g' $(find /home/devel/stuff/static/ -type f))
 					}
 
 					absPath, err := filepath.Abs(path)
@@ -158,7 +164,7 @@ func Ask(question string) string {
 }
 
 func PrintTitle(title string) {
-	fmt.Printf("\n\n==== %s ====\n\n", title)
+	fmt.Printf("\n==== %s ====\n\n", title)
 }
 
 func Exec(name string, args ...string) (string, error) {
