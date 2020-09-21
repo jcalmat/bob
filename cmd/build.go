@@ -16,8 +16,6 @@ limitations under the License.
 package cmd
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 )
 
@@ -31,11 +29,10 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 0 {
-			return errors.New("Provide a template to build command")
+			_ = cmd.Help()
 		}
-		return nil
 	},
 }
 

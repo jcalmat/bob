@@ -48,6 +48,7 @@ func parseConfig() {
 	}
 
 	//TODO: Find a way to move this somewhere else
+	buildCmd.ResetCommands()
 	for _, c := range Commands {
 		c := c
 		buildCmd.AddCommand(&cobra.Command{
@@ -56,26 +57,29 @@ func parseConfig() {
 
 				PrintTitle(c.Alias)
 
+				replacementMap := make(map[string]string)
+
 				for _, s := range c.Templates {
 					t, ok := Templates[s]
 					if !ok {
-						fmt.Printf("Template %s not found, skipping", s)
+						fmt.Printf("Template %s not found, skipping\n\n", s)
 						continue
 					}
 
 					fmt.Printf("Using template path: %s\n\n", t.Path)
 
-					path := Ask("Where do you want to build your code (path)? ")
-
-					replacementMap := make(map[string]string)
+					path := Ask("Where do you want to copy the template (path)? ")
 
 					PrintTitle("Variable replacement")
 
 					for _, v := range t.Variables {
-						replacementMap[v] = Ask(fmt.Sprintf("%s: ", v))
+						// ask only if the key is not already in the map
+						if _, ok := replacementMap[v]; !ok {
+							replacementMap[v] = Ask(fmt.Sprintf("%s: ", v))
+						}
 					}
 
-					// create a tmp dir to revert the operation if an error occures
+					// create a tmp dir to revert the operation if an error occurs
 					dir, err := ioutil.TempDir("", "bob")
 					if err != nil {
 						return err
