@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -24,6 +25,7 @@ type Command struct {
 
 type Template struct {
 	Path      string
+	Git       string
 	Variables []string
 }
 
@@ -43,6 +45,7 @@ func parseConfig() {
 	for k := range vts {
 		Templates[k] = Template{
 			Path:      viper.GetString(fmt.Sprintf("templates.%s.path", k)),
+			Git:       viper.GetString(fmt.Sprintf("templates.%s.git", k)),
 			Variables: viper.GetStringSlice(fmt.Sprintf("templates.%s.variables", k)),
 		}
 	}
@@ -66,7 +69,11 @@ func parseConfig() {
 						continue
 					}
 
-					fmt.Printf("Using template path: %s\n\n", t.Path)
+					if t.Git != "" {
+						fmt.Printf("Cloning template from: %s\n\n", t.Git)
+					} else {
+						fmt.Printf("Using template path: %s\n\n", t.Path)
+					}
 
 					path := Ask("Where do you want to copy the template (path)? ")
 
@@ -86,22 +93,33 @@ func parseConfig() {
 					}
 					defer os.RemoveAll(dir) // clean up
 
-					//TODO: Replace by actual golang code
-					cmd := exec.Command("cp", "-R", t.Path, dir)
-					err = cmd.Run()
-					if err != nil {
-						return err
-					}
-
-					files, err := ioutil.ReadDir(dir)
-					if err != nil {
-						return err
+					if t.Git != "" {
+						_, err := git.PlainClone(dir, false, &git.CloneOptions{
+							URL:      t.Git,
+							Progress: os.Stdout,
+						})
+						if err != nil {
+							return err
+						}
+						t.Path = dir
+					} else {
+						//TODO: Replace by actual golang code
+						cmd := exec.Command("cp", "-R", t.Path, dir)
+						err = cmd.Run()
+						if err != nil {
+							return err
+						}
 					}
 
 					for k, v := range replacementMap {
 						// remplace the folders and files names recursively
-						var parseFiles func(string, []os.FileInfo) error
-						parseFiles = func(path string, files []os.FileInfo) error {
+						var parseFiles func(string) error
+						parseFiles = func(path string) error {
+							files, err := ioutil.ReadDir(path)
+							if err != nil {
+								return err
+							}
+
 							for _, file := range files {
 								fileName := file.Name()
 								re := regexp.MustCompile(k)
@@ -116,11 +134,7 @@ func parseConfig() {
 								}
 								if file.IsDir() {
 									// go deeper in recursion
-									filestmp, err := ioutil.ReadDir(filepath.Join(path, fileName))
-									if err != nil {
-										return err
-									}
-									err = parseFiles(filepath.Join(path, fileName), filestmp)
+									err = parseFiles(filepath.Join(path, fileName))
 									if err != nil {
 										return err
 									}
@@ -139,7 +153,7 @@ func parseConfig() {
 							return nil
 						}
 
-						err = parseFiles(dir, files)
+						err = parseFiles(dir)
 						if err != nil {
 							return err
 						}
@@ -149,9 +163,17 @@ func parseConfig() {
 					if err != nil {
 						return err
 					}
-					err = os.Rename(filepath.Join(dir, files[0].Name()), filepath.Join(absPath, filepath.Base(files[0].Name())))
+
+					files, err := ioutil.ReadDir(dir)
 					if err != nil {
 						return err
+					}
+
+					for _, f := range files {
+						err = os.Rename(filepath.Join(dir, f.Name()), filepath.Join(absPath, f.Name()))
+						if err != nil {
+							return err
+						}
 					}
 				}
 				return nil
