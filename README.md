@@ -1,15 +1,30 @@
-# Bob - Boilerplate generator
+# Bob - The Boilerplate Builder
 
-# Who is Bob?
-
-Bob is a CLI tool used to generate some boilerplate code based on templates made beforehand.
-
-[https://github.com/jcalmat/bob](https://github.com/jcalmat/bob)
+Bob is a CLI tool used to generate boilerplate code from templates made beforehand.
 
 ## Setup
 
+### Binary
+
+Download the latest [release](https://github.com/jcalmat/bob/releases), unzip and put the binary somewhere on your PATH.
+
+### Building
+
+#### Requirements
+
+* golang 1.5.x or later
+
 ```bash
 $> go get github.com/jcalmat/bob
+$> bob init
+```
+
+_OR_
+
+```
+$> git clone git@github.com:jcalmat/bob.git
+$> cd bob
+$> go install
 $> bob init
 ```
 
