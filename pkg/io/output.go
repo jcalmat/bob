@@ -10,7 +10,7 @@ func Info(format string, a ...interface{}) {
 	fmt.Printf(format, a...)
 }
 
-func AsciiBob() {
+func ASCIIBob() {
 	fmt.Print(`
  ______     ______     ______
 /\  == \   /\  __ \   /\  == \

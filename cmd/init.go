@@ -23,7 +23,7 @@ templates:
 `)
 		_, err := os.Stat(viper.ConfigFileUsed())
 		if os.IsNotExist(err) {
-			err := ioutil.WriteFile(viper.ConfigFileUsed(), config, 0644)
+			err := ioutil.WriteFile(viper.ConfigFileUsed(), config, 0600)
 			if err != nil {
 				return err
 			}

@@ -31,7 +31,7 @@ func Execute() {
 }
 
 func init() {
-	io.AsciiBob()
+	io.ASCIIBob()
 
 	updateConfig()
 

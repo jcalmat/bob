@@ -117,6 +117,4 @@ linters:
     - nakedret
     # https://github.com/alexkohler/prealloc
     - prealloc
-    # https://github.com/leighmcculloch/gochecknoinits
-    - gochecknoinits
   enable-all: false
