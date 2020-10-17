@@ -12,7 +12,7 @@ Download the latest [release](https://github.com/jcalmat/bob/releases), unzip an
 
 #### Requirements
 
-* golang 1.5.x or later
+* golang 1.13.x or later
 
 ```bash
 $> go get github.com/jcalmat/bob
