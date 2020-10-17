@@ -1,5 +1,9 @@
 # Bob - The Boilerplate Builder
 
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/jcalmat/routine)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Linter](https://github.com/jcalmat/bob/workflows/golangci-lint/badge.svg)
+
 Bob is a CLI tool used to generate boilerplate code from templates made beforehand.
 
 ## Setup
