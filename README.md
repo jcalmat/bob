@@ -27,10 +27,10 @@ _OR_
 
 ```
 $> git clone git@github.com:jcalmat/bob.git
-$> cd bob
-$> go install
-$> bob init
+$> make
 ```
+
+Copy the binary somewhere in your `$PATH` and run `bob init` or run `$> cd bin && ./bob init`
 
 ### Configuration
 
