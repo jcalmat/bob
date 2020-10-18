@@ -18,11 +18,16 @@ M           = $(shell printf "\033[0;35m▶\033[0m")
 all: vendor build
 
 # Executables
-build: ## Build go api in bin
+build: ## Build bob in bin
 	$(info $(M) building bob…) @
 	$Q $(GO) build \
 		-o bin/$(PACKAGE)_$(VERSION)
 	$Q cp bin/$(PACKAGE)_$(VERSION) bin/$(PACKAGE)
+
+.PHONY: install
+install: ## Install bob
+	$(info $(M) installing bob…) @
+	$Q $(GO) install
 
 # Vendor
 .PHONY: vendor
