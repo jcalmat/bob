@@ -27,10 +27,9 @@ _OR_
 
 ```
 $> git clone git@github.com:jcalmat/bob.git
-$> make
+$> make install
+$> bob init
 ```
-
-Copy the binary somewhere in your `$PATH` and run `bob init` or run `$> cd bin && ./bob init`
 
 ### Configuration
 
@@ -60,11 +59,11 @@ templates:
 
 ## Templates
 
-The templates are prebuilt pieces of code with variables to replace.
+Templates are prebuilt formatted pieces of code
 
 ### **Variables format**
 
-Bob uses go templates to parse and replace the variables, thus these variables must be surrounded with double brackets `{{VARIABLE}}`.
+Bob uses go templates to parse and replace the variables, thus these variables must be formatted with double brackets `{{VARIABLE}}`.
 
 For more information about the format, here is a [cheat sheet](https://curtisvermeeren.github.io/2017/09/14/Golang-Templates-Cheatsheet).
 
@@ -73,68 +72,40 @@ For more information about the format, here is a [cheat sheet](https://curtisver
 To ease your development and avoid variables duplication, bob has custom formatting methods:
 
 - **`short`** will truncate the x first characters of your variable
-
-```go
-// template:
-type {{short .package 1}} struct {
-}
-
-// input:
-// package = user
-// output
-type u struct {
-}
-```
-
-- **`upcase`** will upcase your variable
+- **`upcase`** will capitalize your variable
 - **`title`** will return a copy of the string s with all Unicode letters that begin words mapped to their Unicode title case
 
-You can also pile the functions up
-
-```go
-//template:
-
-// {{short .package 1 | upcase}} represents an event's {{.package}}.
-type {{short .package 1 | upcase}} struct {
-}
-
-// input:
-// package = user
-// output:
-// U represents an event's user.
-type U struct {
-}
-```
+Note: you can also pile the functions up
 
 ### Conditional templates
 
 To be more flexible, you can add conditions to your template to ask the user if he wants to add a particular piece of code.
 
 ```go
-type Store interface {
-	{{if .insert}}
-	Insert()
-	{{end}}
-}
+{{if .print_hello}}
+fmt.Println("Hello world")
+{{end}}
 ```
 
-This will be in final code only if the variable `insert` is defined.
+This print method will be in final code only if the variable `print_hello` is defined.
 
-`insert` can be a boolean or a string. If the string is empty, the block won't be included.
+`print_hello` can be a boolean or a string. If the string is empty, the block won't be included.
 
 yaml example:
 
 ```go
 templates:
   microservice_pkg:
-    git: "https://github.com/jcalmat/bob/example/templates/main.go"
+    git: ""
     variables:
-      - name: "insert"
+      - name: "print_hello"
         type: "bool"
-        desc: "Add Insert method to the store? [y/n] " // desc will override the replacement question asked to the user
-    skip:
-      - ".git"
+        desc: "Do you want to print the hello world? [y/n] " // desc will override the replacement question asked to the user
 ```
+
+### In depth examples
+
+[See here](https://github.com/jcalmat/bob/examples) for more in-depth examples
 
 ### Help
 

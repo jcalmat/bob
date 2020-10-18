@@ -1,0 +1,15 @@
+commands:
+  example:
+    alias: "example"
+    templates:
+      - example
+
+templates:
+  example:
+    path: "/home/kyanpai/go/src/github.com/jcalmat/bob/examples/templates"
+    variables:
+      - name: "my_variable"
+        type: "string"
+      - name: "print_variable"
+        type: "bool"
+        desc: "Do you want to print the variables encapsulated in {{.print_variable}}? [y/n] "
