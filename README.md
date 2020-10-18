@@ -105,7 +105,7 @@ templates:
 
 ### In depth examples
 
-[See here](https://github.com/jcalmat/bob/examples) for more in-depth examples
+[See here](./examples) for more in-depth examples
 
 ### Help
 
