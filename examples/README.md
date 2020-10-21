@@ -1,6 +1,6 @@
 ## In depth examples
 
-In this folder you'll find a `main.go` file containing few examples and a corresponding `.bobconfig.yml`
+In this folder you'll find a `example.js` file containing few examples and a corresponding `.bobconfig.yml`
 
 ### How to use it
 
