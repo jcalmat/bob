@@ -5,22 +5,22 @@ type C struct {
 	Templates map[string]Template
 }
 type Command struct {
-	Alias     string   `yaml:"alias"`
-	Templates []string `yaml:"templates"`
+	Alias     string   `yaml:"alias" json:"alias"`
+	Templates []string `yaml:"templates" json:"templates"`
 }
 
 type Template struct {
-	Path      string     `yaml:"path"`
-	Git       string     `yaml:"git"`
-	Variables []Variable `yaml:"variables"`
-	Skip      []string   `yaml:"skip"`
+	Path      string     `yaml:"path" json:"path"`
+	Git       string     `yaml:"git" json:"git"`
+	Variables []Variable `yaml:"variables" json:"variables"`
+	Skip      []string   `yaml:"skip" json:"skip"`
 }
 
 type Variable struct {
-	Name string
-	Type Type
-	Desc *string
-	Sub  []Variable
+	Name         string
+	Type         Type
+	Desc         *string
+	Dependencies []Variable `yaml:"deps" json:"deps"`
 }
 
 type Item struct {

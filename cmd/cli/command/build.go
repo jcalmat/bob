@@ -223,8 +223,8 @@ func (f *Form) parseQuestion(v config.Variable) *form.FormItem {
 		item = form.NewTextField(fmt.Sprintf("%s: ", v.Name))
 	}
 
-	if v.Sub != nil {
-		for _, s := range v.Sub {
+	if v.Dependencies != nil {
+		for _, s := range v.Dependencies {
 			item.AddItem(f.parseQuestion(s))
 		}
 	}
