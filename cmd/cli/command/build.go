@@ -15,6 +15,11 @@ import (
 	"github.com/jcalmat/form"
 )
 
+type Form struct {
+	form         *form.Form
+	questionsMap map[string]*form.FormItem
+}
+
 func (c Command) Build(args ...string) {
 	globalConfig, err := c.ConfigApp.Parse()
 	if err != nil {
@@ -26,8 +31,6 @@ func (c Command) Build(args ...string) {
 
 	command := globalConfig.Commands[cmd]
 	templates := globalConfig.Templates
-
-	io.Title(cmd)
 
 	// predefine functions
 	funcMap := template.FuncMap{
@@ -50,13 +53,23 @@ func (c Command) Build(args ...string) {
 		},
 	}
 
-	bobform := form.NewForm()
+	f := &Form{
+		form:         form.NewForm(),
+		questionsMap: make(map[string]*form.FormItem),
+	}
+
+	f.form.AddItem(form.NewLabel(` ______     ______     ______`))
+	f.form.AddItem(form.NewLabel(`/\  == \   /\  __ \   /\  == \`))
+	f.form.AddItem(form.NewLabel(`\ \  __<   \ \ \/\ \  \ \  __<`))
+	f.form.AddItem(form.NewLabel(` \ \_____\  \ \_____\  \ \_____\`))
+	f.form.AddItem(form.NewLabel(`  \/_____/   \/_____/   \/_____/`))
+	f.form.AddItem(form.NewLabel(""))
+	f.form.AddItem(form.NewLabel(fmt.Sprintf("> %s", cmd)))
+	f.form.AddItem(form.NewLabel(""))
 
 	for _, s := range command.Templates {
 
 		replacementMap := make(map[string]interface{})
-		textFieldMap := make(map[string]*form.TextField)
-		checkboxMap := make(map[string]*form.Checkbox)
 
 		skipMap := make(map[string]struct{})
 
@@ -65,55 +78,24 @@ func (c Command) Build(args ...string) {
 			io.Info("Template %s not found, skipping\n\n", s)
 			continue
 		}
+		f.form.AddItem(form.NewLabel(fmt.Sprintf("Current template: %s", s)))
 
 		if t.Git != "" {
-			io.Info("Cloning template from: %s\n\n", t.Git)
+			f.form.AddItem(form.NewLabel(fmt.Sprintf("Cloning template from: %s", t.Git)))
+			f.form.AddItem(form.NewLabel(""))
 		} else {
-			io.Info("Using template path: %s\n\n", t.Path)
+			f.form.AddItem(form.NewLabel(fmt.Sprintf("Using template path: %s", t.Path)))
+			f.form.AddItem(form.NewLabel(""))
 		}
-
 		path := form.NewTextField("Where do you want to copy this template? ")
-		bobform.AddItem(path)
+		f.form.AddItem(path)
 
-		bobform.AddItem(form.NewLabel(fmt.Sprintf("Current path: %s", file.GetWorkingDirectory())))
-		bobform.AddItem(form.NewLabel(""))
-		bobform.AddItem(form.NewLabel("==== Variable replacement ===="))
+		f.form.AddItem(form.NewLabel(fmt.Sprintf("Current path: %s", file.GetWorkingDirectory())))
+		f.form.AddItem(form.NewLabel(""))
+		f.form.AddItem(form.NewLabel("==== Variable replacement ===="))
 
 		for _, v := range t.Variables {
-			question := fmt.Sprintf("%s: ", v.Name)
-			if v.Desc != nil {
-				question = *v.Desc
-			}
-
-			switch v.Type {
-			case config.String:
-				textFieldMap[v.Name] = form.NewTextField(question)
-				item := bobform.AddItem(textFieldMap[v.Name])
-				for _, dep := range v.Sub {
-					question := fmt.Sprintf("%s: ", dep.Name)
-					if dep.Desc != nil {
-						question = *dep.Desc
-					}
-					item.AddSubItem(form.NewCheckbox(question, false))
-				}
-
-			case config.Bool:
-				checkboxMap[v.Name] = form.NewCheckbox(question, false)
-				item := bobform.AddItem(checkboxMap[v.Name])
-				for _, dep := range v.Sub {
-					question := fmt.Sprintf("%s: ", dep.Name)
-					if dep.Desc != nil {
-						question = *dep.Desc
-					}
-					item.AddSubItem(form.NewCheckbox(question, false))
-				}
-			case config.Array:
-			//TODO:
-			default:
-				//default case is string
-				textFieldMap[v.Name] = form.NewTextField(fmt.Sprintf("%s: ", v.Name))
-				bobform.AddItem(textFieldMap[v.Name])
-			}
+			f.form.AddItem(f.parseQuestion(v))
 		}
 
 		for _, v := range t.Skip {
@@ -146,12 +128,9 @@ func (c Command) Build(args ...string) {
 			}
 		}
 
-		bobform.Run()
+		f.form.Run()
 
-		for k, v := range textFieldMap {
-			replacementMap[k] = v.Answer()
-		}
-		for k, v := range checkboxMap {
+		for k, v := range f.questionsMap {
 			replacementMap[k] = v.Answer()
 		}
 
@@ -213,7 +192,7 @@ func (c Command) Build(args ...string) {
 
 		}
 
-		err = file.Move(dir, path.Answer(), t.Skip)
+		err = file.Move(dir, path.Answer().(string), t.Skip)
 		if err != nil {
 			c.Logger.Error().Err(err).Msg("")
 			return
@@ -221,4 +200,35 @@ func (c Command) Build(args ...string) {
 	}
 
 	io.Title("Done")
+}
+
+func (f *Form) parseQuestion(v config.Variable) *form.FormItem {
+	question := fmt.Sprintf("%s: ", v.Name)
+	if v.Desc != nil {
+		question = *v.Desc
+	}
+
+	// var item form.Item
+	var item *form.FormItem
+
+	switch v.Type {
+	case config.String:
+		item = form.NewTextField(question)
+	case config.Bool:
+		item = form.NewCheckbox(question, false)
+	case config.Array:
+	//TODO:
+	default:
+		//default case is string
+		item = form.NewTextField(fmt.Sprintf("%s: ", v.Name))
+	}
+
+	if v.Sub != nil {
+		for _, s := range v.Sub {
+			item.AddItem(f.parseQuestion(s))
+		}
+	}
+	f.questionsMap[v.Name] = item
+
+	return item
 }
