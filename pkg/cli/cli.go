@@ -99,47 +99,48 @@ func (c *Command) handle() {
 }
 
 func (c Command) displayHelp() {
-	if len(c.children) > 0 {
-		if c.Description != "" {
-			fmt.Printf("\n%s\n\n", c.Description)
-		}
-		fmt.Printf("Usage:\n")
-		root := &c
-		parent := &c
-		var path string
-		for {
-			if parent == nil {
-				break
-			}
-			path = fmt.Sprintf("%s %s", parent.Key, path)
-			root = parent
-			parent = parent.parent
-		}
-		path = strings.TrimSpace(path)
-		if len(c.children) > 0 {
-			fmt.Printf("  %s [command]\n", path)
-		}
-		if len(c.Flags) > 0 {
-			fmt.Printf("  %s [flags]\n", path)
-		}
-		fmt.Println()
-
-		if len(c.children) > 0 {
-			fmt.Printf("Available Commands for \"%s\":\n", path)
-			for _, child := range c.children {
-				fmt.Printf("  %-12s\t%s\n", child.Key, child.Description)
-			}
-		}
-		fmt.Println()
-		if len(c.Flags) > 0 {
-			fmt.Print("Flags:\n  ")
-			for _, flag := range c.Flags {
-				fmt.Printf("%s", flag.Key)
-				for _, alias := range flag.Aliases {
-					fmt.Printf(", %s", alias)
-				}
-			}
-		}
-		fmt.Printf("\n\nUse \"%s [command] --help\" for more information about a command.\n", root.Key)
+	if len(c.children) == 0 {
+		return
 	}
+	if c.Description != "" {
+		fmt.Printf("\n%s\n\n", c.Description)
+	}
+	fmt.Printf("Usage:\n")
+	root := &c
+	parent := &c
+	var path string
+	for {
+		if parent == nil {
+			break
+		}
+		path = fmt.Sprintf("%s %s", parent.Key, path)
+		root = parent
+		parent = parent.parent
+	}
+	path = strings.TrimSpace(path)
+	if len(c.children) > 0 {
+		fmt.Printf("  %s [command]\n", path)
+	}
+	if len(c.Flags) > 0 {
+		fmt.Printf("  %s [flags]\n", path)
+	}
+	fmt.Println()
+
+	if len(c.children) > 0 {
+		fmt.Printf("Available Commands for \"%s\":\n", path)
+		for _, child := range c.children {
+			fmt.Printf("  %-12s\t%s\n", child.Key, child.Description)
+		}
+	}
+	fmt.Println()
+	if len(c.Flags) > 0 {
+		fmt.Print("Flags:\n  ")
+		for _, flag := range c.Flags {
+			fmt.Printf("%s", flag.Key)
+			for _, alias := range flag.Aliases {
+				fmt.Printf(", %s", alias)
+			}
+		}
+	}
+	fmt.Printf("\n\nUse \"%s [command] --help\" for more information about a command.\n", root.Key)
 }
