@@ -41,8 +41,8 @@ tidy: ## Update go.sum with go.mod
 	$(info $(M) running mod tidy…) @
 	$Q $(GO) mod tidy
 
-# Check
-.PHONY: check
+# Test
+.PHONY: test
 check: vendor lint
 
 # Lint

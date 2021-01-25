@@ -1,11 +1,17 @@
 package file
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
+
+	"github.com/docker/docker/daemon/graphdriver/copy"
+)
+
+var (
+	ErrInvalidPath = errors.New("invalid path")
 )
 
 // GetWorkingDirectory returns the current path
@@ -57,12 +63,10 @@ func Move(from, to string, skip []string) error {
 	return nil
 }
 
+// Copy copies a file or folder from {from} to {to}
 func Copy(from, to string) error {
-	//TODO: Replace by actual golang code
-	cmd := exec.Command("cp", "-R", from, to)
-	err := cmd.Run()
-	if err != nil {
-		return err
+	if to == "" {
+		return ErrInvalidPath
 	}
-	return nil
+	return copy.DirCopy(from, to, copy.Content, true)
 }

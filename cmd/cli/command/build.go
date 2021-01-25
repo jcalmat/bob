@@ -1,6 +1,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -128,7 +129,15 @@ func (c Command) Build(args ...string) {
 			}
 		}
 
-		f.form.Run()
+		err = f.form.Run()
+		if err != nil {
+			if errors.Is(err, form.ErrUserCancelRequest) {
+				fmt.Println("bye")
+				return
+			}
+			c.Logger.Error().Err(err).Msg("failed to run bob")
+			return
+		}
 
 		for k, v := range f.questionsMap {
 			replacementMap[k] = v.Answer()
