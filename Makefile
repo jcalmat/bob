@@ -2,12 +2,12 @@ PACKAGE     = bob
 DATE       ?= $(shell date +%FT%T%z)
 VERSION    ?= $(shell git describe --tags --always)
 
-PKG_LIST    = $(shell go list ./... | grep -v /vendor/ | grep -v /scripts/)
-
 GO          = go
 GOLINT      = golangci-lint
 GODOC       = godoc
 GOFMT       = gofmt
+
+CLI         = cli
 
 V           = 0
 Q           = $(if $(filter 1,$V),,@)
@@ -20,9 +20,9 @@ all: vendor build
 # Executables
 build: ## Build bob in bin
 	$(info $(M) building bob…) @
-	$Q $(GO) build \
-		-o bin/$(PACKAGE)_$(VERSION)
-	$Q cp bin/$(PACKAGE)_$(VERSION) bin/$(PACKAGE)
+	$Q cd cmd/$(CLI) && $(GO) build \
+		-o ../../bin/$(PACKAGE)_$(CLI)_$(VERSION)
+	$Q cp bin/$(PACKAGE)_$(CLI)_$(VERSION) bin/$(PACKAGE)_$(CLI)
 
 .PHONY: install
 install: ## Install bob
@@ -41,8 +41,8 @@ tidy: ## Update go.sum with go.mod
 	$(info $(M) running mod tidy…) @
 	$Q $(GO) mod tidy
 
-# Check
-.PHONY: check
+# Test
+.PHONY: test
 check: vendor lint
 
 # Lint

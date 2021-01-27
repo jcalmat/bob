@@ -1,6 +1,7 @@
 package file
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -8,6 +9,16 @@ import (
 
 	"github.com/docker/docker/daemon/graphdriver/copy"
 )
+
+var (
+	ErrInvalidPath = errors.New("invalid path")
+)
+
+// GetWorkingDirectory returns the current path
+func GetWorkingDirectory() string {
+	dir, _ := os.Getwd()
+	return dir
+}
 
 // RenameFile replaces the regexp result with {replace} in {s}
 func RenameFile(path, expression, replace string) (string, error) {
@@ -20,9 +31,9 @@ func RenameFile(path, expression, replace string) (string, error) {
 	return path, nil
 }
 
-// Move moves all the files from {src} path to {dest} and skip the files and
+// Move moves all the files from {from} path to {to} and skip the files and
 // folders in {skip}
-func Move(src, dest string, skip []string) error {
+func Move(from, to string, skip []string) error {
 	skippedFiles := make(map[string]struct{})
 
 	for _, v := range skip {
@@ -30,12 +41,12 @@ func Move(src, dest string, skip []string) error {
 		skippedFiles[v] = struct{}{}
 	}
 
-	absPath, err := filepath.Abs(dest)
+	absPath, err := filepath.Abs(to)
 	if err != nil {
 		return err
 	}
 
-	files, err := ioutil.ReadDir(src)
+	files, err := ioutil.ReadDir(from)
 	if err != nil {
 		return err
 	}
@@ -44,7 +55,7 @@ func Move(src, dest string, skip []string) error {
 		if _, ok := skippedFiles[f.Name()]; ok {
 			continue
 		}
-		err = os.Rename(filepath.Join(src, f.Name()), filepath.Join(absPath, f.Name()))
+		err = os.Rename(filepath.Join(from, f.Name()), filepath.Join(absPath, f.Name()))
 		if err != nil {
 			return err
 		}
@@ -52,7 +63,10 @@ func Move(src, dest string, skip []string) error {
 	return nil
 }
 
-// Copy copies a file or folder from {src} to {dest}
-func Copy(src, dest string) error {
-	return copy.DirCopy(src, dest, copy.Content, true)
+// Copy copies a file or folder from {from} to {to}
+func Copy(from, to string) error {
+	if to == "" {
+		return ErrInvalidPath
+	}
+	return copy.DirCopy(from, to, copy.Content, true)
 }
