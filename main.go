@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	configFilePath string = "/home/kyanpai/.bobconfig.yml"
+	configFilePath string = "~/.bobconfig.yml"
 )
 
 func main() {
