@@ -6,8 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-
-	"github.com/docker/docker/daemon/graphdriver/copy"
+	"strings"
 )
 
 var (
@@ -65,8 +64,23 @@ func Move(from, to string, skip []string) error {
 
 // Copy copies a file or folder from {from} to {to}
 func Copy(from, to string) error {
-	if to == "" {
-		return ErrInvalidPath
-	}
-	return copy.DirCopy(from, to, copy.Content, true)
+
+	err := filepath.Walk(from, func(path string, info os.FileInfo, e error) error {
+		if e != nil {
+			return e
+		}
+		relPath := strings.Replace(path, from, "", 1)
+		if relPath == "" {
+			return nil
+		}
+		if info.IsDir() {
+			return os.Mkdir(filepath.Join(to, relPath), 0755)
+		}
+		data, err := ioutil.ReadFile(filepath.Join(from, relPath))
+		if err != nil {
+			return err
+		}
+		return ioutil.WriteFile(filepath.Join(to, relPath), data, 0600)
+	})
+	return err
 }

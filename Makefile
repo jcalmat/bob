@@ -20,9 +20,9 @@ all: vendor build
 # Executables
 build: ## Build bob in bin
 	$(info $(M) building bob…) @
-	$Q cd cmd/$(CLI) && $(GO) build \
-		-o ../../bin/$(PACKAGE)_$(CLI)_$(VERSION)
-	$Q cp bin/$(PACKAGE)_$(CLI)_$(VERSION) bin/$(PACKAGE)_$(CLI)
+	$Q $(GO) build \
+		-o bin/$(PACKAGE)_$(CLI)_$(VERSION)
+	$Q cp bin/$(PACKAGE)_$(CLI)_$(VERSION) bin/$(PACKAGE)
 
 .PHONY: install
 install: ## Install bob
