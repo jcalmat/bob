@@ -19,7 +19,7 @@ Download the latest [release](https://github.com/jcalmat/bob/releases), unzip an
 * golang 1.13.x or later
 
 ```bash
-$> go get github.com/jcalmat/bob
+$> go get -u github.com/jcalmat/bob
 $> bob init
 ```
 
