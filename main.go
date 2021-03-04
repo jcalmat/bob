@@ -1,6 +1,8 @@
 package main
 
 import (
+	"path/filepath"
+
 	"github.com/jcalmat/bob/cmd/cli/command"
 	"github.com/jcalmat/bob/pkg/cli"
 	"github.com/jcalmat/bob/pkg/config/app"
@@ -17,8 +19,10 @@ func main() {
 
 	logger := logger.New(false)
 
+	absPath, _ := filepath.Abs(configFilePath)
+
 	configApp := app.App{
-		ConfigFilePath: configFilePath,
+		ConfigFilePath: absPath,
 	}
 
 	handler := command.Command{
