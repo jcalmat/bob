@@ -1,13 +1,12 @@
 package main
 
 import (
-	"path/filepath"
-
 	"github.com/jcalmat/bob/cmd/cli/command"
 	"github.com/jcalmat/bob/pkg/cli"
 	"github.com/jcalmat/bob/pkg/config/app"
 	"github.com/jcalmat/bob/pkg/io"
 	"github.com/jcalmat/bob/pkg/logger"
+	"github.com/mitchellh/go-homedir"
 )
 
 var (
@@ -19,8 +18,7 @@ func main() {
 
 	logger := logger.New(false)
 
-	absPath, _ := filepath.Abs(configFilePath)
-
+	absPath, _ := homedir.Expand(configFilePath)
 	configApp := app.App{
 		ConfigFilePath: absPath,
 	}
