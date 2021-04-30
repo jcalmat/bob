@@ -1,7 +1,6 @@
 package command
 
 import (
-	"errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -10,15 +9,21 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/jcalmat/bob/cmd/cli/ui"
 	"github.com/jcalmat/bob/pkg/config"
 	"github.com/jcalmat/bob/pkg/file"
 	"github.com/jcalmat/bob/pkg/io"
-	"github.com/jcalmat/form"
+	"github.com/jcalmat/termui/v3/widgets"
 )
 
 type Form struct {
-	form         *form.Form
-	questionsMap map[string]*form.FormItem
+	form *ui.Form
+	// questionsMap       map[string]*widgets.FormItem
+	stringQuestions map[string]*widgets.TextField
+	boolQuestions   map[string]*widgets.Checkbox
+}
+
+type ConfigInfo struct {
 }
 
 func (c Command) Build(args ...string) {
@@ -55,18 +60,15 @@ func (c Command) Build(args ...string) {
 	}
 
 	f := &Form{
-		form:         form.NewForm(),
-		questionsMap: make(map[string]*form.FormItem),
+		form: ui.NewForm(),
+		// questionsMap: make(map[string]*widgets.FormItem),
+		stringQuestions: make(map[string]*widgets.TextField),
+		boolQuestions:   make(map[string]*widgets.Checkbox),
 	}
 
-	f.form.AddItem(form.NewLabel(` ______     ______     ______`))
-	f.form.AddItem(form.NewLabel(`/\  == \   /\  __ \   /\  == \`))
-	f.form.AddItem(form.NewLabel(`\ \  __<   \ \ \/\ \  \ \  __<`))
-	f.form.AddItem(form.NewLabel(` \ \_____\  \ \_____\  \ \_____\`))
-	f.form.AddItem(form.NewLabel(`  \/_____/   \/_____/   \/_____/`))
-	f.form.AddItem(form.NewLabel(""))
-	f.form.AddItem(form.NewLabel(fmt.Sprintf("> %s", cmd)))
-	f.form.AddItem(form.NewLabel(""))
+	form := ui.NewForm()
+	var nodes []*widgets.FormNode
+	var infos strings.Builder
 
 	for _, s := range command.Templates {
 
@@ -79,24 +81,46 @@ func (c Command) Build(args ...string) {
 			io.Info("Template %s not found, skipping\n\n", s)
 			continue
 		}
-		f.form.AddItem(form.NewLabel(fmt.Sprintf("Current template: %s", s)))
+		// f.form.AddItem(form.NewLabel(fmt.Sprintf("Current template: %s", s)))
+
+		f.form.SetTitle(s)
 
 		if t.Git != "" {
-			f.form.AddItem(form.NewLabel(fmt.Sprintf("Cloning template from: %s", t.Git)))
-			f.form.AddItem(form.NewLabel(""))
+			infos.WriteString(fmt.Sprintf("Cloning template from: %s\n", t.Git))
+			// f.form.AddItem(form.NewLabel(fmt.Sprintf("Cloning template from: %s", t.Git)))
+			// f.form.AddItem(form.NewLabel(""))
 		} else {
-			f.form.AddItem(form.NewLabel(fmt.Sprintf("Using template path: %s", t.Path)))
-			f.form.AddItem(form.NewLabel(""))
+			infos.WriteString(fmt.Sprintf("Using template path: %s\n", t.Path))
+			// f.form.AddItem(form.NewLabel(fmt.Sprintf("Using template path: %s", t.Path)))
+			// f.form.AddItem(form.NewLabel(""))
 		}
-		path := form.NewTextField("Where do you want to copy this template? ")
-		f.form.AddItem(path)
+		path := widgets.NewTextField("Where do you want to copy this template? ")
 
-		f.form.AddItem(form.NewLabel(fmt.Sprintf("Current path: %s", file.GetWorkingDirectory())))
-		f.form.AddItem(form.NewLabel(""))
-		f.form.AddItem(form.NewLabel("==== Variable replacement ===="))
+		nodes = []*widgets.FormNode{
+			{
+				Item: path,
+			},
+			{
+				Item: widgets.NewLabel(fmt.Sprintf("Current path: %s", file.GetWorkingDirectory())),
+			},
+			{
+				Item: widgets.NewLabel(""),
+			},
+			{
+				Item: widgets.NewLabel("==== Variable replacement ===="),
+			},
+		}
+
+		// path := form.NewTextField("Where do you want to copy this template? ")
+		// f.form.AddItem(path)
+
+		// f.form.AddItem(form.NewLabel(fmt.Sprintf("Current path: %s", file.GetWorkingDirectory())))
+		// f.form.AddItem(form.NewLabel(""))
+		// f.form.AddItem(form.NewLabel("==== Variable replacement ===="))
 
 		for _, v := range t.Variables {
-			f.form.AddItem(f.parseQuestion(v))
+			nodes = append(nodes, f.parseQuestion2(v))
+			// f.form.AddItem(f.parseQuestion(v))
 		}
 
 		for _, v := range t.Skip {
@@ -129,17 +153,20 @@ func (c Command) Build(args ...string) {
 			}
 		}
 
-		err = f.form.Run()
-		if err != nil {
-			if errors.Is(err, form.ErrUserCancelRequest) {
-				fmt.Println("bye")
-				return
-			}
-			c.Logger.Error().Err(err).Msg("failed to run bob")
-			return
-		}
+		form.SetNodes(nodes)
+		form.SetInfos(infos.String())
+		c.Screen.SetForm(form)
+		// err = f.form.Run()
+		// if err != nil {
+		// 	if errors.Is(err, form.ErrUserCancelRequest) {
+		// 		fmt.Println("bye")
+		// 		return
+		// 	}
+		// 	c.Logger.Error().Err(err).Msg("failed to run bob")
+		// 	return
+		// }
 
-		for k, v := range f.questionsMap {
+		for k, v := range f.stringQuestions {
 			replacementMap[k] = v.Answer()
 		}
 
@@ -201,7 +228,7 @@ func (c Command) Build(args ...string) {
 
 		}
 
-		err = file.Move(dir, path.Answer().(string), t.Skip)
+		err = file.Move(dir, path.Answer(), t.Skip)
 		if err != nil {
 			c.Logger.Error().Err(err).Msg("")
 			return
@@ -211,33 +238,71 @@ func (c Command) Build(args ...string) {
 	io.Title("Done")
 }
 
-func (f *Form) parseQuestion(v config.Variable) *form.FormItem {
+// func (f *Form) parseQuestion(v config.Variable) *form.FormItem {
+// 	question := fmt.Sprintf("%s: ", v.Name)
+// 	if v.Desc != nil {
+// 		question = *v.Desc
+// 	}
+
+// 	// var item form.Item
+// 	var item *form.FormItem
+
+// 	switch v.Type {
+// 	case config.String:
+// 		item = form.NewTextField(question)
+// 	case config.Bool:
+// 		item = form.NewCheckbox(question, false)
+// 	case config.Array:
+// 	//TODO:
+// 	default:
+// 		//default case is string
+// 		item = form.NewTextField(fmt.Sprintf("%s: ", v.Name))
+// 	}
+
+// 	if v.Dependencies != nil {
+// 		for _, s := range v.Dependencies {
+// 			item.AddItem(f.parseQuestion(s))
+// 		}
+// 	}
+// 	f.questionsMap[v.Name] = item
+
+// 	return item
+// }
+
+func (f *Form) parseQuestion2(v config.Variable) *widgets.FormNode {
 	question := fmt.Sprintf("%s: ", v.Name)
 	if v.Desc != nil {
 		question = *v.Desc
 	}
 
+	var node *widgets.FormNode
 	// var item form.Item
-	var item *form.FormItem
+	var item widgets.FormItem
 
 	switch v.Type {
 	case config.String:
-		item = form.NewTextField(question)
+		textfield := widgets.NewTextField(question)
+		item = textfield
+		f.stringQuestions[v.Name] = textfield
 	case config.Bool:
-		item = form.NewCheckbox(question, false)
+		checkbox := widgets.NewCheckbox(question, false)
+		item = checkbox
+		f.boolQuestions[v.Name] = checkbox
 	case config.Array:
 	//TODO:
 	default:
 		//default case is string
-		item = form.NewTextField(fmt.Sprintf("%s: ", v.Name))
+		item = widgets.NewTextField(fmt.Sprintf("%s: ", v.Name))
 	}
 
 	if v.Dependencies != nil {
 		for _, s := range v.Dependencies {
-			item.AddItem(f.parseQuestion(s))
+			node.Nodes = append(node.Nodes, f.parseQuestion2(s))
+			// item.AddItem(f.parseQuestion(s))
 		}
 	}
-	f.questionsMap[v.Name] = item
+	// f.questionsMap[v.Name] = item
 
-	return item
+	node.Item = item
+	return node
 }

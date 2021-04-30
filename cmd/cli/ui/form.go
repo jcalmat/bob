@@ -14,11 +14,22 @@ func NewForm() *Form {
 	return &Form{}
 }
 
+func (f *Form) SetTitle(title string) {
+	f.Content.Title = title
+}
+
 func (f *Form) SetNodes(n []*widgets.FormNode) {
 	if f.Content == nil {
 		f.buildContent()
 	}
 	f.Content.SetNodes(n)
+}
+
+func (f *Form) SetInfos(s string) {
+	if f.Infos == nil {
+		f.buildInfos()
+	}
+	f.Infos.Text = s
 }
 
 func (f *Form) Render() {

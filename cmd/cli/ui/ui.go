@@ -92,6 +92,8 @@ func (s *Screen) HandleEvents() {
 			s.Resize()
 		}
 
+		// escape = restore prev screen state
+
 		if close {
 			break
 		}
