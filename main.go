@@ -69,9 +69,8 @@ func main() {
 
 	screen.SetMenu(mainMenu)
 
-	screen.Resize()
-	screen.Render()
-	screen.HandleEvents()
+	screen.Run()
+
 	//
 
 	// r := cli.Init(logger)

@@ -4,25 +4,36 @@ import (
 	ui "github.com/jcalmat/termui/v3"
 )
 
+const (
+	StatusRunning = iota
+	StatusStopped
+)
+
 type Screen struct {
 	Headers *Header
 	Menu    *Menu
 	Form    *Form
+
+	status     int
+	breadcrumb []Screen
 }
 
 func NewScreen() *Screen {
 	return &Screen{
-		Headers: NewHeader(),
+		Headers:    NewHeader(),
+		breadcrumb: make([]Screen, 0),
 	}
 }
 
 func (s *Screen) SetMenu(m *Menu) {
+	s.breadcrumb = append(s.breadcrumb, *s)
 	s.Menu = m
 	s.Menu.Resize()
 	s.UnsetForm()
 }
 
 func (s *Screen) SetForm(f *Form) {
+	s.breadcrumb = append(s.breadcrumb, *s)
 	s.Form = f
 	s.Form.Resize()
 	s.UnsetMenu()
@@ -44,8 +55,19 @@ func Close() {
 	ui.Close()
 }
 
+func (s *Screen) Run() {
+	s.status = StatusRunning
+	s.Resize()
+	s.Render()
+	s.HandleEvents()
+}
+
+func (s *Screen) Stop() {
+	s.status = StatusStopped
+	ui.Close()
+}
+
 func (s *Screen) Render() {
-	// s.Resize()
 	if s.Headers != nil {
 		s.Headers.Render()
 	}
@@ -73,8 +95,26 @@ func (s *Screen) Resize() {
 	}
 }
 
+func (s *Screen) Restore(old Screen) {
+	if old.Headers != nil {
+		s.Headers = old.Headers
+	}
+
+	if old.Menu != nil {
+		s.Menu = old.Menu
+	}
+
+	if old.Form != nil {
+		s.Form = old.Form
+	}
+
+	s.breadcrumb = old.breadcrumb
+	s.status = old.status
+
+	s.Render()
+}
+
 func (s *Screen) HandleEvents() {
-	var close bool
 	uiEvents := ui.PollEvents()
 	for {
 		e := <-uiEvents
@@ -88,18 +128,21 @@ func (s *Screen) HandleEvents() {
 
 		switch e.ID {
 		case "<C-c>":
-			ui.Close()
-			close = true
+			s.Stop()
 		case "<Resize>":
 			s.Resize()
+		case "<Escape>":
+			if len(s.breadcrumb) > 1 {
+				s.Restore(s.breadcrumb[len(s.breadcrumb)-1])
+			} else {
+				s.Stop()
+			}
 		}
 
-		// TODO:
-		// escape = restore prev screen state
-
-		if close {
+		if s.status == StatusStopped {
 			break
 		}
+
 		s.Render()
 	}
 }

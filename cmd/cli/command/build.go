@@ -18,8 +18,7 @@ import (
 )
 
 type Form struct {
-	form *ui.Form
-	// questionsMap       map[string]*widgets.FormItem
+	form            *ui.Form
 	stringQuestions map[string]*widgets.TextField
 	boolQuestions   map[string]*widgets.Checkbox
 }
@@ -61,14 +60,12 @@ func (c Command) Build(args ...string) {
 	}
 
 	f := &Form{
-		form: ui.NewForm(),
-		// questionsMap: make(map[string]*widgets.FormItem),
+		form:            ui.NewForm(),
 		stringQuestions: make(map[string]*widgets.TextField),
 		boolQuestions:   make(map[string]*widgets.Checkbox),
 	}
 
 	form := ui.NewForm()
-	var nodes []*widgets.FormNode
 	var infos strings.Builder
 
 	for _, s := range command.Templates {
@@ -82,24 +79,24 @@ func (c Command) Build(args ...string) {
 			io.Info("Template %s not found, skipping\n\n", s)
 			continue
 		}
-		// f.form.AddItem(form.NewLabel(fmt.Sprintf("Current template: %s", s)))
 
 		form.SetTitle(s)
 
 		if t.Git != "" {
 			infos.WriteString(fmt.Sprintf("Cloning template from: %s\n\n", t.Git))
-			// f.form.AddItem(form.NewLabel(fmt.Sprintf("Cloning template from: %s", t.Git)))
-			// f.form.AddItem(form.NewLabel(""))
 		} else {
 			infos.WriteString(fmt.Sprintf("Using template path: %s\n\n", t.Path))
-			// f.form.AddItem(form.NewLabel(fmt.Sprintf("Using template path: %s", t.Path)))
-			// f.form.AddItem(form.NewLabel(""))
 		}
 		path := widgets.NewTextField("Where do you want to copy this template? ")
 
 		infos.WriteString(fmt.Sprintf("Current path: %s\n\n", file.GetWorkingDirectory()))
 
-		nodes = []*widgets.FormNode{
+		var close bool
+		closeButton := widgets.NewButton("Done", func() {
+			close = true
+		})
+
+		nodes := []*widgets.FormNode{
 			{
 				Item: path,
 			},
@@ -109,18 +106,22 @@ func (c Command) Build(args ...string) {
 			{
 				Item: widgets.NewLabel("==== Variable replacement ===="),
 			},
+			{
+				Item: widgets.NewLabel(""),
+			},
 		}
 
-		// path := form.NewTextField("Where do you want to copy this template? ")
-		// f.form.AddItem(path)
-
-		// f.form.AddItem(form.NewLabel(fmt.Sprintf("Current path: %s", file.GetWorkingDirectory())))
-		// f.form.AddItem(form.NewLabel(""))
-		// f.form.AddItem(form.NewLabel("==== Variable replacement ===="))
 		for _, v := range t.Variables {
-			nodes = append(nodes, f.parseQuestion2(v))
-			// f.form.AddItem(f.parseQuestion(v))
+			nodes = append(nodes, f.parseQuestion(v))
 		}
+
+		nodes = append(nodes, &widgets.FormNode{
+			Item: widgets.NewLabel(""),
+		})
+
+		nodes = append(nodes, &widgets.FormNode{
+			Item: closeButton,
+		})
 
 		for _, v := range t.Skip {
 			skipMap[v] = struct{}{}
@@ -131,14 +132,13 @@ func (c Command) Build(args ...string) {
 		c.Screen.SetForm(form)
 		form.Render()
 
-		var close bool
 		uiEvents := termui.PollEvents()
 		for {
 			e := <-uiEvents
 			form.Content.HandleKeyboard(e)
 			switch e.ID {
 			case "<C-c>":
-				close = true
+				return
 			case "<Down>":
 				form.Content.ScrollDown()
 			case "<Up>":
@@ -158,7 +158,6 @@ func (c Command) Build(args ...string) {
 		if err != nil {
 			infos.WriteString(fmt.Sprintf("failed to create temp dir: %s\n", err.Error()))
 			form.SetInfos(infos.String())
-			// c.Logger.Error().Err(err).Msg("")
 			return
 		}
 		defer os.RemoveAll(dir) // clean up
@@ -171,7 +170,6 @@ func (c Command) Build(args ...string) {
 			if err != nil {
 				infos.WriteString(fmt.Sprintf("failed to clone template: %s\n", err.Error()))
 				form.SetInfos(infos.String())
-				// c.Logger.Error().Err(err).Msg("")
 				return
 			}
 			t.Path = dir
@@ -180,20 +178,9 @@ func (c Command) Build(args ...string) {
 			if err != nil {
 				infos.WriteString(fmt.Sprintf("failed to copy template: %s\n", err.Error()))
 				form.SetInfos(infos.String())
-				// c.Logger.Error().Err(err).Msg("")
 				return
 			}
 		}
-
-		// err = f.form.Run()
-		// if err != nil {
-		// 	if errors.Is(err, form.ErrUserCancelRequest) {
-		// 		fmt.Println("bye")
-		// 		return
-		// 	}
-		// 	c.Logger.Error().Err(err).Msg("failed to run bob")
-		// 	return
-		// }
 
 		for k, v := range f.stringQuestions {
 			replacementMap[k] = v.Answer()
@@ -265,46 +252,22 @@ func (c Command) Build(args ...string) {
 	}
 
 	infos.WriteString("\nDone")
-	infos.WriteString("\nPress ESC to get back to main menu")
+	infos.WriteString("\nPress ESC to get back to main menu or Enter to quit")
 	form.SetInfos(infos.String())
 	form.Render()
 
-	// c.Logger.Info().Msg("Done")
-	// io.Title("Done")
+	uiEvents := termui.PollEvents()
+	for {
+		e := <-uiEvents
+		form.Content.HandleKeyboard(e)
+		switch e.ID {
+		case "<Enter>":
+			ui.Close()
+		}
+	}
 }
 
-// func (f *Form) parseQuestion(v config.Variable) *form.FormItem {
-// 	question := fmt.Sprintf("%s: ", v.Name)
-// 	if v.Desc != nil {
-// 		question = *v.Desc
-// 	}
-
-// 	// var item form.Item
-// 	var item *form.FormItem
-
-// 	switch v.Type {
-// 	case config.String:
-// 		item = form.NewTextField(question)
-// 	case config.Bool:
-// 		item = form.NewCheckbox(question, false)
-// 	case config.Array:
-// 	//TODO:
-// 	default:
-// 		//default case is string
-// 		item = form.NewTextField(fmt.Sprintf("%s: ", v.Name))
-// 	}
-
-// 	if v.Dependencies != nil {
-// 		for _, s := range v.Dependencies {
-// 			item.AddItem(f.parseQuestion(s))
-// 		}
-// 	}
-// 	f.questionsMap[v.Name] = item
-
-// 	return item
-// }
-
-func (f *Form) parseQuestion2(v config.Variable) *widgets.FormNode {
+func (f *Form) parseQuestion(v config.Variable) *widgets.FormNode {
 	question := fmt.Sprintf("%s: ", v.Name)
 	if v.Desc != nil {
 		question = *v.Desc
@@ -334,11 +297,9 @@ func (f *Form) parseQuestion2(v config.Variable) *widgets.FormNode {
 
 	if v.Dependencies != nil {
 		for _, s := range v.Dependencies {
-			node.Nodes = append(node.Nodes, f.parseQuestion2(s))
-			// item.AddItem(f.parseQuestion(s))
+			node.Nodes = append(node.Nodes, f.parseQuestion(s))
 		}
 	}
-	// f.questionsMap[v.Name] = item
 
 	node.Item = item
 	return node

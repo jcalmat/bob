@@ -27,6 +27,8 @@ github.com/jcalmat/termui/v3 v3.1.1-0.20210430105527-c9498b9e9b3c h1:7Po15CxU4/H
 github.com/jcalmat/termui/v3 v3.1.1-0.20210430105527-c9498b9e9b3c/go.mod h1:dxz/uJTANhIMBzrVleREaDCZ0Z1Y2OeRsfAUqEkw1Hg=
 github.com/jcalmat/termui/v3 v3.1.1-0.20210430164312-611d093fb819 h1:DrCz8eX0Y4Z3HDW45F/DBfugmaistpOHxyITOPL2tqs=
 github.com/jcalmat/termui/v3 v3.1.1-0.20210430164312-611d093fb819/go.mod h1:dxz/uJTANhIMBzrVleREaDCZ0Z1Y2OeRsfAUqEkw1Hg=
+github.com/jcalmat/termui/v3 v3.1.1-0.20210501131905-894b9d3e06ea h1:t3vLIBoULEkvOBDi+pkie853fGGz8oPcf5mg1pxNF5k=
+github.com/jcalmat/termui/v3 v3.1.1-0.20210501131905-894b9d3e06ea/go.mod h1:dxz/uJTANhIMBzrVleREaDCZ0Z1Y2OeRsfAUqEkw1Hg=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd h1:Coekwdh0v2wtGp9Gmz1Ze3eVRAWJMLokvN3QjdzCHLY=
 github.com/kevinburke/ssh_config v0.0.0-20190725054713-01f96b0aa0cd/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF4nAY/ojJ6r6mM=
