@@ -18,11 +18,13 @@ func NewScreen() *Screen {
 
 func (s *Screen) SetMenu(m *Menu) {
 	s.Menu = m
+	s.Menu.Resize()
 	s.UnsetForm()
 }
 
 func (s *Screen) SetForm(f *Form) {
 	s.Form = f
+	s.Form.Resize()
 	s.UnsetMenu()
 }
 
@@ -43,7 +45,7 @@ func Close() {
 }
 
 func (s *Screen) Render() {
-	s.Resize()
+	// s.Resize()
 	if s.Headers != nil {
 		s.Headers.Render()
 	}
@@ -53,7 +55,7 @@ func (s *Screen) Render() {
 	}
 
 	if s.Form != nil {
-		s.Menu.Render()
+		s.Form.Render()
 	}
 }
 
@@ -67,23 +69,23 @@ func (s *Screen) Resize() {
 	}
 
 	if s.Form != nil {
-		s.Menu.Resize()
+		s.Form.Resize()
 	}
 }
 
 func (s *Screen) HandleEvents() {
 	var close bool
 	uiEvents := ui.PollEvents()
-
 	for {
 		e := <-uiEvents
+		if s.Form != nil {
+			s.Form.HandleEvent(e)
+		}
+
 		if s.Menu != nil {
 			s.Menu.HandleEvent(e)
 		}
 
-		if s.Form != nil {
-			s.Menu.HandleEvent(e)
-		}
 		switch e.ID {
 		case "<C-c>":
 			ui.Close()
@@ -92,6 +94,7 @@ func (s *Screen) HandleEvents() {
 			s.Resize()
 		}
 
+		// TODO:
 		// escape = restore prev screen state
 
 		if close {

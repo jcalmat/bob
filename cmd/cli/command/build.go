@@ -13,6 +13,7 @@ import (
 	"github.com/jcalmat/bob/pkg/config"
 	"github.com/jcalmat/bob/pkg/file"
 	"github.com/jcalmat/bob/pkg/io"
+	"github.com/jcalmat/termui/v3"
 	"github.com/jcalmat/termui/v3/widgets"
 )
 
@@ -83,25 +84,24 @@ func (c Command) Build(args ...string) {
 		}
 		// f.form.AddItem(form.NewLabel(fmt.Sprintf("Current template: %s", s)))
 
-		f.form.SetTitle(s)
+		form.SetTitle(s)
 
 		if t.Git != "" {
-			infos.WriteString(fmt.Sprintf("Cloning template from: %s\n", t.Git))
+			infos.WriteString(fmt.Sprintf("Cloning template from: %s\n\n", t.Git))
 			// f.form.AddItem(form.NewLabel(fmt.Sprintf("Cloning template from: %s", t.Git)))
 			// f.form.AddItem(form.NewLabel(""))
 		} else {
-			infos.WriteString(fmt.Sprintf("Using template path: %s\n", t.Path))
+			infos.WriteString(fmt.Sprintf("Using template path: %s\n\n", t.Path))
 			// f.form.AddItem(form.NewLabel(fmt.Sprintf("Using template path: %s", t.Path)))
 			// f.form.AddItem(form.NewLabel(""))
 		}
 		path := widgets.NewTextField("Where do you want to copy this template? ")
 
+		infos.WriteString(fmt.Sprintf("Current path: %s\n\n", file.GetWorkingDirectory()))
+
 		nodes = []*widgets.FormNode{
 			{
 				Item: path,
-			},
-			{
-				Item: widgets.NewLabel(fmt.Sprintf("Current path: %s", file.GetWorkingDirectory())),
 			},
 			{
 				Item: widgets.NewLabel(""),
@@ -117,7 +117,6 @@ func (c Command) Build(args ...string) {
 		// f.form.AddItem(form.NewLabel(fmt.Sprintf("Current path: %s", file.GetWorkingDirectory())))
 		// f.form.AddItem(form.NewLabel(""))
 		// f.form.AddItem(form.NewLabel("==== Variable replacement ===="))
-
 		for _, v := range t.Variables {
 			nodes = append(nodes, f.parseQuestion2(v))
 			// f.form.AddItem(f.parseQuestion(v))
@@ -127,35 +126,65 @@ func (c Command) Build(args ...string) {
 			skipMap[v] = struct{}{}
 		}
 
+		form.SetNodes(nodes)
+		form.SetInfos(infos.String())
+		c.Screen.SetForm(form)
+		form.Render()
+
+		var close bool
+		uiEvents := termui.PollEvents()
+		for {
+			e := <-uiEvents
+			form.Content.HandleKeyboard(e)
+			switch e.ID {
+			case "<C-c>":
+				close = true
+			case "<Down>":
+				form.Content.ScrollDown()
+			case "<Up>":
+				form.Content.ScrollUp()
+			case "<Enter>":
+				form.Content.ToggleExpand()
+				form.Content.ScrollDown()
+			}
+			form.Render()
+			if close {
+				break
+			}
+		}
+
 		// create a tmp dir to revert the operation if an error occurs
 		dir, err := ioutil.TempDir("", "bob")
 		if err != nil {
-			c.Logger.Error().Err(err).Msg("")
+			infos.WriteString(fmt.Sprintf("failed to create temp dir: %s\n", err.Error()))
+			form.SetInfos(infos.String())
+			// c.Logger.Error().Err(err).Msg("")
 			return
 		}
 		defer os.RemoveAll(dir) // clean up
 
 		if t.Git != "" {
 			_, err := git.PlainClone(dir, false, &git.CloneOptions{
-				URL:      t.Git,
-				Progress: os.Stdout,
+				URL: t.Git,
+				// Progress: &infos,
 			})
 			if err != nil {
-				c.Logger.Error().Err(err).Msg("")
+				infos.WriteString(fmt.Sprintf("failed to clone template: %s\n", err.Error()))
+				form.SetInfos(infos.String())
+				// c.Logger.Error().Err(err).Msg("")
 				return
 			}
 			t.Path = dir
 		} else {
 			err := file.Copy(t.Path, dir)
 			if err != nil {
-				c.Logger.Error().Err(err).Msg("")
+				infos.WriteString(fmt.Sprintf("failed to copy template: %s\n", err.Error()))
+				form.SetInfos(infos.String())
+				// c.Logger.Error().Err(err).Msg("")
 				return
 			}
 		}
 
-		form.SetNodes(nodes)
-		form.SetInfos(infos.String())
-		c.Screen.SetForm(form)
 		// err = f.form.Run()
 		// if err != nil {
 		// 	if errors.Is(err, form.ErrUserCancelRequest) {
@@ -235,7 +264,13 @@ func (c Command) Build(args ...string) {
 		}
 	}
 
-	io.Title("Done")
+	infos.WriteString("\nDone")
+	infos.WriteString("\nPress ESC to get back to main menu")
+	form.SetInfos(infos.String())
+	form.Render()
+
+	// c.Logger.Info().Msg("Done")
+	// io.Title("Done")
 }
 
 // func (f *Form) parseQuestion(v config.Variable) *form.FormItem {
@@ -275,7 +310,7 @@ func (f *Form) parseQuestion2(v config.Variable) *widgets.FormNode {
 		question = *v.Desc
 	}
 
-	var node *widgets.FormNode
+	var node = &widgets.FormNode{}
 	// var item form.Item
 	var item widgets.FormItem
 
@@ -292,7 +327,9 @@ func (f *Form) parseQuestion2(v config.Variable) *widgets.FormNode {
 	//TODO:
 	default:
 		//default case is string
-		item = widgets.NewTextField(fmt.Sprintf("%s: ", v.Name))
+		textfield := widgets.NewTextField(fmt.Sprintf("%s: ", v.Name))
+		item = textfield
+		f.stringQuestions[v.Name] = textfield
 	}
 
 	if v.Dependencies != nil {

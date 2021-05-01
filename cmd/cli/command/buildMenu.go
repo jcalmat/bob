@@ -12,10 +12,11 @@ func (c Command) BuildMenu(args ...string) {
 	menu := ui.NewMenu()
 
 	options := make([]ui.MenuOption, 0)
-	for _, command := range globalConfig.Commands {
+	for key, command := range globalConfig.Commands {
 		options = append(options, ui.MenuOption{
-			Name:    command.Alias,
-			Handler: c.Build,
+			Name:        key,
+			Description: command.Description,
+			Handler:     c.Build,
 		})
 	}
 
@@ -23,5 +24,5 @@ func (c Command) BuildMenu(args ...string) {
 
 	c.Screen.SetMenu(menu)
 
-	c.Screen.Render()
+	menu.Render()
 }

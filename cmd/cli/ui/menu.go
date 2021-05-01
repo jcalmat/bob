@@ -38,7 +38,7 @@ func (m *Menu) AddOptions(os []MenuOption) {
 
 func (m *Menu) Render() {
 	ui.Render(m.Options)
-	m.Description.Text = m.menuOptions[m.Options.Rows[m.Options.SelectedRow]].Description
+	m.Description.Text = m.menuOptions[m.Options.Rows[m.Options.SelectedRow][2:]].Description
 	ui.Render(m.Description)
 }
 
@@ -58,9 +58,10 @@ func (m *Menu) HandleEvent(e ui.Event) {
 	case "<Enter>":
 		fn := m.menuOptions[m.Options.Rows[m.Options.SelectedRow][2:]].Handler
 		if fn != nil {
-			fn(m.Options.Rows[m.Options.SelectedRow])
+			fn(m.Options.Rows[m.Options.SelectedRow][2:])
 		}
 	}
+	// m.Render()
 }
 
 func (m *Menu) buildOptions(os []MenuOption) {

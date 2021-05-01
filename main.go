@@ -69,6 +69,7 @@ func main() {
 
 	screen.SetMenu(mainMenu)
 
+	screen.Resize()
 	screen.Render()
 	screen.HandleEvents()
 	//

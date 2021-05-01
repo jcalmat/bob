@@ -15,6 +15,9 @@ func NewForm() *Form {
 }
 
 func (f *Form) SetTitle(title string) {
+	if f.Content == nil {
+		f.buildContent()
+	}
 	f.Content.Title = title
 }
 
@@ -38,6 +41,7 @@ func (f *Form) Render() {
 	}
 
 	ui.Render(f.Content)
+	ui.Render(f.Infos)
 }
 
 func (f *Form) Resize() {
@@ -48,16 +52,18 @@ func (f *Form) Resize() {
 }
 
 func (f *Form) HandleEvent(e ui.Event) {
-	switch e.ID {
-	case "<Down>":
-		f.Content.ScrollDown()
-	case "<Up>":
-		f.Content.ScrollUp()
-	case "<Enter>":
-		f.Content.ToggleExpand()
-	}
+	// f.Content.HandleKeyboard(e)
 
-	f.Content.HandleKeyboard(e)
+	// switch e.ID {
+	// case "<Down>":
+	// 	f.Content.ScrollDown()
+	// case "<Up>":
+	// 	f.Content.ScrollUp()
+	// case "<Enter>":
+	// 	f.Content.ToggleExpand()
+	// 	f.Content.ScrollDown()
+	// }
+	// f.Render()
 }
 
 func (f *Form) buildContent() {
@@ -70,4 +76,5 @@ func (f *Form) buildContent() {
 func (f *Form) buildInfos() {
 	desc := widgets.NewParagraph()
 	desc.Title = "Infos"
+	f.Infos = desc
 }

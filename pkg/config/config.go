@@ -5,8 +5,9 @@ type C struct {
 	Templates map[string]Template
 }
 type Command struct {
-	Alias     string   `yaml:"alias" json:"alias"`
-	Templates []string `yaml:"templates" json:"templates"`
+	// Alias     string   `yaml:"alias" json:"alias"`
+	Description string   `yaml:"description" json:"description"`
+	Templates   []string `yaml:"templates" json:"templates"`
 }
 
 type Template struct {
