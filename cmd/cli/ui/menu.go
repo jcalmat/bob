@@ -20,6 +20,8 @@ type Menu struct {
 
 func NewMenu() *Menu {
 	return &Menu{
+		Options:     &widgets.List{},
+		Description: &widgets.Paragraph{},
 		menuOptions: make(map[string]MenuOption),
 	}
 }
@@ -38,7 +40,11 @@ func (m *Menu) AddOptions(os []MenuOption) {
 
 func (m *Menu) Render() {
 	ui.Render(m.Options)
-	m.Description.Text = m.menuOptions[m.Options.Rows[m.Options.SelectedRow][2:]].Description
+	if len(m.Options.Rows) > m.Options.SelectedRow {
+		if opt, ok := m.menuOptions[m.Options.Rows[m.Options.SelectedRow][2:]]; ok {
+			m.Description.Text = opt.Description
+		}
+	}
 	ui.Render(m.Description)
 }
 
@@ -61,7 +67,6 @@ func (m *Menu) HandleEvent(e ui.Event) {
 			fn(m.Options.Rows[m.Options.SelectedRow][2:])
 		}
 	}
-	// m.Render()
 }
 
 func (m *Menu) buildOptions(os []MenuOption) {

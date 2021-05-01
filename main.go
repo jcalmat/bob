@@ -6,7 +6,6 @@ import (
 	"github.com/jcalmat/bob/cmd/cli/command"
 	"github.com/jcalmat/bob/cmd/cli/ui"
 	"github.com/jcalmat/bob/pkg/config/app"
-	"github.com/jcalmat/bob/pkg/logger"
 	"github.com/mitchellh/go-homedir"
 )
 
@@ -15,26 +14,17 @@ var (
 )
 
 func main() {
-	// io.ASCIIBob()
-
-	logger := logger.New(false)
-
 	absPath, _ := homedir.Expand(configFilePath)
 	configApp := app.App{
 		ConfigFilePath: absPath,
 	}
 
-	//
-
 	if err := ui.Init(); err != nil {
 		log.Fatalf("failed to initialize termui: %v", err)
 	}
 	screen := ui.NewScreen()
-	// defer ui.Close()
 
 	handler := command.Command{
-		Logger: logger,
-
 		ConfigApp: configApp,
 		Screen:    screen,
 	}
@@ -70,32 +60,4 @@ func main() {
 	screen.SetMenu(mainMenu)
 
 	screen.Run()
-
-	//
-
-	// r := cli.Init(logger)
-	// buildCmd := r.Command.AddCommand(&cli.Command{
-	// 	Key:         "build",
-	// 	Description: "build a project from a specified template",
-	// })
-
-	// globalConfig, err := configApp.Parse()
-	// if err != nil {
-	// 	logger.Err(err).Msg("")
-	// 	return
-	// }
-	// for key := range globalConfig.Commands {
-	// 	buildCmd.AddCommand(&cli.Command{
-	// 		Key:     key,
-	// 		Handler: handler.Build,
-	// 	})
-	// }
-
-	// r.Command.AddCommand(&cli.Command{
-	// 	Key:         "init",
-	// 	Description: "initialize bob's config file",
-	// 	Handler:     handler.Init,
-	// })
-
-	// r.Handle()
 }

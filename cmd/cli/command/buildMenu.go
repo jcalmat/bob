@@ -3,13 +3,16 @@ package command
 import "github.com/jcalmat/bob/cmd/cli/ui"
 
 func (c Command) BuildMenu(args ...string) {
-	globalConfig, err := c.ConfigApp.Parse()
-	if err != nil {
-		c.Logger.Err(err).Msg("")
-		return
-	}
 
 	menu := ui.NewMenu()
+
+	globalConfig, err := c.ConfigApp.Parse()
+	if err != nil {
+		modale := ui.NewModale(err.Error(), ui.ModaleTypeErr)
+		modale.Render()
+		c.Screen.SetModale(modale)
+		return
+	}
 
 	options := make([]ui.MenuOption, 0)
 	for key, command := range globalConfig.Commands {

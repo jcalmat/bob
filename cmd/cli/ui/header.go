@@ -28,6 +28,8 @@ func (h *Header) Resize() {
 	h.Help.SetRect(x, 0, x/2, 12)
 }
 
+func (h *Header) HandleEvent(e ui.Event) {}
+
 func (h *Header) buildHeader() *widgets.Paragraph {
 	header := widgets.NewParagraph()
 
@@ -51,11 +53,11 @@ func (h *Header) buildHelp() *widgets.Paragraph {
     -----------------------------
     -        Move around        -
     -----------------------------
-    go up               ▲
-    go down             ▼
-    expand field        'enter'
-    select checkbox     'enter'
-    Quit bob            'ctrl+c'
+    go up                 ▲
+    go down               ▼
+    go back               'escape'
+    select                'enter'
+    quit without saving   'ctrl+c'
 `
 
 	return help

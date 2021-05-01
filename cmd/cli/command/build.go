@@ -19,17 +19,41 @@ import (
 
 type Form struct {
 	form            *ui.Form
+	screen          *ui.Screen
+	template        config.Template
 	stringQuestions map[string]*widgets.TextField
 	boolQuestions   map[string]*widgets.Checkbox
+	skipMap         map[string]struct{}
 }
 
-type ConfigInfo struct {
+// predefine functions
+var funcMap = template.FuncMap{
+	// truncate the i first chars of s
+	"short": func(s string, i int) string {
+		runes := []rune(s)
+		if len(runes) > i {
+			return string(runes[:i])
+		}
+		return s
+	},
+
+	// upcase the string s
+	"upcase": func(s string) string {
+		return strings.ToUpper(s)
+	},
+
+	"title": func(s string) string {
+		return strings.Title(s)
+	},
 }
 
 func (c Command) Build(args ...string) {
+
+	var infos strings.Builder
+
 	globalConfig, err := c.ConfigApp.Parse()
 	if err != nil {
-		c.Logger.Err(err).Msg("")
+		infos.WriteString(err.Error())
 		return
 	}
 
@@ -38,41 +62,21 @@ func (c Command) Build(args ...string) {
 	command := globalConfig.Commands[cmd]
 	templates := globalConfig.Templates
 
-	// predefine functions
-	funcMap := template.FuncMap{
-		// truncate the i first chars of s
-		"short": func(s string, i int) string {
-			runes := []rune(s)
-			if len(runes) > i {
-				return string(runes[:i])
-			}
-			return s
-		},
-
-		// upcase the string s
-		"upcase": func(s string) string {
-			return strings.ToUpper(s)
-		},
-
-		"title": func(s string) string {
-			return strings.Title(s)
-		},
-	}
-
-	f := &Form{
+	buildForm := &Form{
 		form:            ui.NewForm(),
+		screen:          c.Screen,
+		skipMap:         make(map[string]struct{}),
 		stringQuestions: make(map[string]*widgets.TextField),
 		boolQuestions:   make(map[string]*widgets.Checkbox),
 	}
 
-	form := ui.NewForm()
-	var infos strings.Builder
+	// form := ui.NewForm()
 
 	for _, s := range command.Templates {
 
-		replacementMap := make(map[string]interface{})
+		// replacementMap := make(map[string]interface{})
 
-		skipMap := make(map[string]struct{})
+		// skipMap := make(map[string]struct{})
 
 		t, ok := templates[s]
 		if !ok {
@@ -80,7 +84,9 @@ func (c Command) Build(args ...string) {
 			continue
 		}
 
-		form.SetTitle(s)
+		buildForm.template = t
+
+		buildForm.form.SetTitle(s)
 
 		if t.Git != "" {
 			infos.WriteString(fmt.Sprintf("Cloning template from: %s\n\n", t.Git))
@@ -91,9 +97,10 @@ func (c Command) Build(args ...string) {
 
 		infos.WriteString(fmt.Sprintf("Current path: %s\n\n", file.GetWorkingDirectory()))
 
-		var close bool
+		// var close bool
 		closeButton := widgets.NewButton("Done", func() {
-			close = true
+			buildForm.ProcessBuild(path)
+			// close = true
 		})
 
 		nodes := []*widgets.FormNode{
@@ -112,7 +119,7 @@ func (c Command) Build(args ...string) {
 		}
 
 		for _, v := range t.Variables {
-			nodes = append(nodes, f.parseQuestion(v))
+			nodes = append(nodes, buildForm.parseQuestion(v))
 		}
 
 		nodes = append(nodes, &widgets.FormNode{
@@ -124,145 +131,143 @@ func (c Command) Build(args ...string) {
 		})
 
 		for _, v := range t.Skip {
-			skipMap[v] = struct{}{}
+			buildForm.skipMap[v] = struct{}{}
 		}
 
-		form.SetNodes(nodes)
-		form.SetInfos(infos.String())
-		c.Screen.SetForm(form)
-		form.Render()
+		buildForm.form.SetNodes(nodes)
+		buildForm.form.SetInfos(infos.String())
+		c.Screen.SetForm(buildForm.form)
+		buildForm.form.Render()
+	}
+}
 
-		uiEvents := termui.PollEvents()
-		for {
-			e := <-uiEvents
-			form.Content.HandleKeyboard(e)
-			switch e.ID {
-			case "<C-c>":
-				return
-			case "<Down>":
-				form.Content.ScrollDown()
-			case "<Up>":
-				form.Content.ScrollUp()
-			case "<Enter>":
-				form.Content.ToggleExpand()
-				form.Content.ScrollDown()
-			}
-			form.Render()
-			if close {
-				break
-			}
-		}
+func (f *Form) ProcessBuild(path *widgets.TextField) {
+	replacementMap := make(map[string]interface{})
 
-		// create a tmp dir to revert the operation if an error occurs
-		dir, err := ioutil.TempDir("", "bob")
+	dir, err := ioutil.TempDir("", "bob")
+	if err != nil {
+		modale := ui.NewModale(fmt.Sprintf("failed to create temp dir: %s\n", err.Error()), ui.ModaleTypeErr)
+		modale.Resize()
+		modale.Render()
+		f.screen.SetModale(modale)
+		return
+	}
+	defer os.RemoveAll(dir) // clean up
+
+	if f.template.Git != "" {
+		_, err := git.PlainClone(dir, false, &git.CloneOptions{
+			URL: f.template.Git,
+			// Progress: &infos,
+		})
 		if err != nil {
-			infos.WriteString(fmt.Sprintf("failed to create temp dir: %s\n", err.Error()))
-			form.SetInfos(infos.String())
+			modale := ui.NewModale(fmt.Sprintf("failed to clone template: %s\n", err.Error()), ui.ModaleTypeErr)
+			modale.Resize()
+			modale.Render()
+			f.screen.SetModale(modale)
 			return
 		}
-		defer os.RemoveAll(dir) // clean up
-
-		if t.Git != "" {
-			_, err := git.PlainClone(dir, false, &git.CloneOptions{
-				URL: t.Git,
-				// Progress: &infos,
-			})
-			if err != nil {
-				infos.WriteString(fmt.Sprintf("failed to clone template: %s\n", err.Error()))
-				form.SetInfos(infos.String())
-				return
-			}
-			t.Path = dir
-		} else {
-			err := file.Copy(t.Path, dir)
-			if err != nil {
-				infos.WriteString(fmt.Sprintf("failed to copy template: %s\n", err.Error()))
-				form.SetInfos(infos.String())
-				return
-			}
-		}
-
-		for k, v := range f.stringQuestions {
-			replacementMap[k] = v.Answer()
-		}
-
-		for k, v := range replacementMap {
-			// remplace the folders and files names recursively
-			var parseFiles func(string) error
-			parseFiles = func(path string) error {
-				folderFiles, err := ioutil.ReadDir(path)
-				if err != nil {
-					return err
-				}
-
-				for _, f := range folderFiles {
-					if _, ok := skipMap[f.Name()]; ok {
-						continue
-					}
-
-					filePath := filepath.Join(path, f.Name())
-
-					if _, ok := v.(string); ok {
-						replacedName, err := file.RenameFile(filePath, fmt.Sprintf("{{%s}}", k), v.(string))
-						if err != nil {
-							return err
-						}
-						filePath = filepath.Join(path, filepath.Base(replacedName))
-					}
-					if f.IsDir() {
-						// go deeper in recursion
-						err = parseFiles(filePath)
-						if err != nil {
-							return err
-						}
-					} else {
-						// use go templates to replace
-						tt, err := template.New(filepath.Base(filePath)).Funcs(funcMap).ParseFiles(filePath)
-						if err != nil {
-							return err
-						}
-						fd, err := os.Create(filePath)
-						if err != nil {
-							return err
-						}
-						defer fd.Close()
-
-						err = tt.Execute(fd, replacementMap)
-						if err != nil {
-							return err
-						}
-					}
-				}
-				return nil
-			}
-
-			err = parseFiles(dir)
-			if err != nil {
-				c.Logger.Error().Err(err).Msg("")
-				return
-			}
-
-		}
-
-		err = file.Move(dir, path.Answer(), t.Skip)
+		f.template.Path = dir
+	} else {
+		err := file.Copy(f.template.Path, dir)
 		if err != nil {
-			c.Logger.Error().Err(err).Msg("")
+			modale := ui.NewModale(fmt.Sprintf("failed to copy template: %s\n", err.Error()), ui.ModaleTypeErr)
+			modale.Resize()
+			modale.Render()
+			f.screen.SetModale(modale)
 			return
 		}
 	}
 
-	infos.WriteString("\nDone")
-	infos.WriteString("\nPress ESC to get back to main menu or Enter to quit")
-	form.SetInfos(infos.String())
-	form.Render()
+	for k, v := range f.stringQuestions {
+		replacementMap[k] = v.Answer()
+	}
+
+	for k, v := range replacementMap {
+		// remplace the folders and files names recursively
+		var parseFiles func(string) error
+		parseFiles = func(path string) error {
+			folderFiles, err := ioutil.ReadDir(path)
+			if err != nil {
+				return err
+			}
+
+			for _, ff := range folderFiles {
+				if _, ok := f.skipMap[ff.Name()]; ok {
+					continue
+				}
+
+				filePath := filepath.Join(path, ff.Name())
+
+				if _, ok := v.(string); ok {
+					replacedName, err := file.RenameFile(filePath, fmt.Sprintf("{{%s}}", k), v.(string))
+					if err != nil {
+						return err
+					}
+					filePath = filepath.Join(path, filepath.Base(replacedName))
+				}
+				if ff.IsDir() {
+					// go deeper in recursion
+					err = parseFiles(filePath)
+					if err != nil {
+						return err
+					}
+				} else {
+					// use go templates to replace
+					tt, err := template.New(filepath.Base(filePath)).Funcs(funcMap).ParseFiles(filePath)
+					if err != nil {
+						return err
+					}
+					fd, err := os.Create(filePath)
+					if err != nil {
+						return err
+					}
+					defer fd.Close()
+
+					err = tt.Execute(fd, replacementMap)
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		}
+
+		err = parseFiles(dir)
+		if err != nil {
+			modale := ui.NewModale(err.Error(), ui.ModaleTypeErr)
+			modale.Resize()
+			modale.Render()
+			f.screen.SetModale(modale)
+			return
+		}
+
+	}
+
+	err = file.Move(dir, path.Answer(), f.template.Skip)
+	if err != nil {
+		modale := ui.NewModale(err.Error(), ui.ModaleTypeErr)
+		modale.Resize()
+		modale.Render()
+		f.screen.SetModale(modale)
+		return
+	}
+
+	modale := ui.NewModale(`
+	Done
+	Press Enter to quit
+	`, ui.ModaleTypeInfo)
+	modale.Resize()
+	modale.Render()
+	f.screen.SetModale(modale)
 
 	uiEvents := termui.PollEvents()
 	for {
 		e := <-uiEvents
-		form.Content.HandleKeyboard(e)
+		f.form.Content.HandleKeyboard(e)
 		switch e.ID {
 		case "<Enter>":
-			ui.Close()
+			f.screen.Stop()
+			return
 		}
 	}
 }

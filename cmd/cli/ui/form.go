@@ -8,6 +8,7 @@ import (
 type Form struct {
 	Content *widgets.Form
 	Infos   *widgets.Paragraph
+	status  Status
 }
 
 func NewForm() *Form {
@@ -52,18 +53,19 @@ func (f *Form) Resize() {
 }
 
 func (f *Form) HandleEvent(e ui.Event) {
-	// f.Content.HandleKeyboard(e)
+	f.Content.HandleKeyboard(e)
 
-	// switch e.ID {
-	// case "<Down>":
-	// 	f.Content.ScrollDown()
-	// case "<Up>":
-	// 	f.Content.ScrollUp()
-	// case "<Enter>":
-	// 	f.Content.ToggleExpand()
-	// 	f.Content.ScrollDown()
-	// }
-	// f.Render()
+	switch e.ID {
+	case "<Down>":
+		f.Content.ScrollDown()
+	case "<Up>":
+		f.Content.ScrollUp()
+	case "<Enter>":
+		f.Content.ToggleExpand()
+		f.Content.ScrollDown()
+	case "<Close>":
+		break
+	}
 }
 
 func (f *Form) buildContent() {
