@@ -32,28 +32,19 @@ func main() {
 	mainMenu := ui.NewMenu()
 	mainMenu.AddOptions([]ui.MenuOption{
 		{
-			Name:    "Build",
-			Handler: handler.BuildMenu,
-			Description: `
-			Build a project from a specified template
-			`,
+			Name:        "Build",
+			Handler:     handler.BuildMenu,
+			Description: "Build a project from a specified template",
 		},
 		{
-			Name:    "Init",
-			Handler: handler.Init,
-			Description: `
-			Initialize a new .bobconfig file if it doesn't already exist.
-			`,
+			Name:        "Init",
+			Handler:     handler.Init,
+			Description: "Initialize a new .bobconfig file if it doesn't already exist.",
 		},
 		{
-			Name: "Who am I?",
-			Description: `
-				I am a tool used to generate boilerplate code from templates.
-
-				I use go templates syntaxe to parse and replace variables, thus these variables must be formatted with double brackets like {{VARIABLE}}.
-				For more information about the format, here is a cheat sheet: https://curtisvermeeren.github.io/2017/09/14/Golang-Templates-Cheatsheet.
-				
-			`,
+			Name:        "Help",
+			Description: "Help contains some explanations about Bob, indicating what it is precisely and how to use it.",
+			Handler:     handler.Help,
 		},
 	})
 

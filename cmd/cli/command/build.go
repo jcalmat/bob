@@ -2,11 +2,11 @@ package command
 
 import (
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -196,61 +196,77 @@ func (f *Form) ProcessBuild(path *widgets.TextField) error {
 	for k, v := range f.stringQuestions {
 		replacementMap[k] = v.Answer()
 	}
+	for k, v := range f.boolQuestions {
+		replacementMap[k] = v.Answer()
+	}
 
-	for k, v := range replacementMap {
-		// remplace the folders and files names recursively
-		var parseFiles func(string) error
-		parseFiles = func(path string) error {
-			folderFiles, err := ioutil.ReadDir(path)
+	// parseFiles replaces folders, files names and file content recursively
+	var parseFiles func(string) error
+	parseFiles = func(path string) error {
+		folderFiles, err := ioutil.ReadDir(path)
+		if err != nil {
+			return err
+		}
+
+		for _, ff := range folderFiles {
+			if _, ok := f.skipMap[ff.Name()]; ok {
+				continue
+			}
+
+			filePath := filepath.Join(path, ff.Name())
+
+			// # File/Directory name modifications
+			var sb strings.Builder
+
+			tmpl, err := template.New(filepath.Base(filePath)).Funcs(funcMap).Parse(filePath)
+			if err != nil {
+				return err
+			}
+			err = tmpl.Execute(&sb, replacementMap)
 			if err != nil {
 				return err
 			}
 
-			for _, ff := range folderFiles {
-				if _, ok := f.skipMap[ff.Name()]; ok {
-					continue
+			// replace if file doesn't already exist; i.e if we actually modified the file name
+			if _, err := os.Stat(sb.String()); err != nil {
+				err = os.Rename(filePath, sb.String())
+				if err != nil {
+					return err
 				}
+				filePath = filepath.Join(path, filepath.Base(sb.String()))
+			}
 
-				filePath := filepath.Join(path, ff.Name())
-
-				if _, ok := v.(string); ok {
-					replacedName, err := file.RenameFile(filePath, fmt.Sprintf("{{%s}}", k), v.(string))
-					if err != nil {
-						return err
-					}
-					filePath = filepath.Join(path, filepath.Base(replacedName))
+			if ff.IsDir() {
+				// go deeper in recursion
+				err = parseFiles(filePath)
+				if err != nil {
+					return err
 				}
-				if ff.IsDir() {
-					// go deeper in recursion
-					err = parseFiles(filePath)
-					if err != nil {
-						return err
-					}
-				} else {
-					// use go templates to replace
-					tt, err := template.New(filepath.Base(filePath)).Funcs(funcMap).ParseFiles(filePath)
-					if err != nil {
-						return err
-					}
-					fd, err := os.Create(filePath)
-					if err != nil {
-						return err
-					}
-					defer fd.Close()
+			} else {
+				// # File content modifications
 
-					err = tt.Execute(fd, replacementMap)
-					if err != nil {
-						return err
-					}
+				tt, err := template.New(filepath.Base(filePath)).Funcs(funcMap).ParseFiles(filePath)
+				if err != nil {
+					return err
+				}
+				fd, err := os.Create(filePath)
+				if err != nil {
+					return err
+				}
+				defer fd.Close()
+
+				err = tt.Execute(fd, replacementMap)
+				if err != nil {
+					return err
 				}
 			}
-			return nil
 		}
+		return nil
+	}
 
-		err = parseFiles(dir)
-		if err != nil {
-			return err
-		}
+	err = parseFiles(dir)
+	if err != nil {
+		return err
 	}
 
 	err = file.Move(dir, path.Answer(), f.template.Skip)
