@@ -9,10 +9,11 @@ func (c Command) Help(args ...string) {
 	menu.AddOptions([]ui.MenuOption{
 		{
 			Name: "What is Bob?",
-			Description: `
-			Bob is a tool used to generate boilerplate code.
+			Description: `## Bob
+			
+			Bob, or Boilerplate Builder, is a tool used to generate boilerplate code.
 
-			It was made to avoid loosing too much time writing redundant code and allow developers to focus and dedicate more on interesting parts of their projects.
+			It was made to avoid loosing too much time writing redundant code and allow developers to focus and dedicate more time on interesting parts of their projects.
 
 			Bob is asking you to do 2 things in order to work:
 			- Create template(s) of boilerplate code
@@ -21,8 +22,7 @@ func (c Command) Help(args ...string) {
 		},
 		{
 			Name: "How does it work?",
-			Description: `
-			## Introduction
+			Description: `## Introduction
 
 			Bob is a boilerplate generator. To generate this boilerplate in your project, you need to create templates which represent roughly what your code should look like in the end.
 
@@ -38,7 +38,69 @@ func (c Command) Help(args ...string) {
 
 
 			For more information about the format, here is a cheat sheet: https://golang.org/pkg/text/template/#hdr-Actions.
+			`,
+		},
+		{
+			Name: "Examples - The basics",
+			Description: `## The Basics
+			
+			Given the file "example.js" with the following line of code:
 
+			var {{.my_variable}}
+			
+			Given the following .bobconfig.yaml:
+
+			commands:
+			  test:
+			    templates:
+			      - test
+			
+			templates:
+			  test:
+			    path: "/path/to/example.js"
+			    variables:
+			      - name: "my_variable"
+			        type: "string"
+			
+			When you run bob, it will automatically propose you to replace "my_variable" by any string and ask you where to put your newly created boiler file.
+			`,
+		},
+		{
+			Name: "Examples - Special variables",
+			Description: `## Special variables
+			
+			Since bob uses go template to perform the variable replacement, it has some interesting specificities.
+			You can, for instance, perform conditional operations.
+
+			Ex:
+
+			{{if .my_variable}}
+			// do something only if .my_variable is defined
+			{{end}}
+
+			Bob also ships with homemade functions to ease string formatting
+			- **short [INT]** will truncate the x first characters of your variable
+			- **upcase** will capitalize your variable
+			- **title** will return a copy of the string s with all Unicode letters that begin words mapped to their Unicode title case
+
+			Ex:
+
+			{{title .my_variable}}
+			// .my_variable = test -> Test
+
+			{{short .my_variable 1}}
+			// .my_variable = test -> t
+
+			{{upcase .my_variable}}
+			// .my_variable = test -> TEST
+
+
+			You can even combine multiple functions.
+
+			Ex:
+
+			{{short .my_variable 3 | upcase}}
+			// my_variable = test -> TES
 			`,
 		},
 	})
@@ -47,28 +109,4 @@ func (c Command) Help(args ...string) {
 	menu.Description.Title = ""
 	c.Screen.SetMenu(menu)
 	menu.Render()
-
-	// globalConfig, err := c.ConfigApp.Parse()
-	// if err != nil {
-	// 	modale := ui.NewModale(err.Error(), ui.ModaleTypeErr)
-	// 	modale.Render()
-	// 	c.Screen.SetModale(modale)
-	// 	return
-	// }
-
-	// options := make([]ui.MenuOption, 0)
-	// for key, command := range globalConfig.Commands {
-	// 	options = append(options, ui.MenuOption{
-	// 		Name:        key,
-	// 		Description: command.Description,
-	// 		Handler:     c.Build,
-	// 	})
-	// }
-
-	// menu.AddOptions(options)
-
-	// menu.Options.Title = "Build menu"
-	// c.Screen.SetMenu(menu)
-
-	// menu.Render()
 }

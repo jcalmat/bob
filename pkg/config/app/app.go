@@ -67,6 +67,8 @@ func (a App) InitConfig() error {
 commands:
 
 templates:
+
+settings:
 `)
 	_, err := os.Stat(a.ConfigFilePath)
 	if os.IsNotExist(err) {
