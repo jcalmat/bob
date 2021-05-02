@@ -24,9 +24,9 @@ type Modale struct {
 	Type ModaleType
 }
 
-func NewModale(value string, t ModaleType) *Modale {
+func NewModale(s string, t ModaleType) *Modale {
 	p := widgets.NewParagraph()
-	p.Text = value
+	p.Text = s
 	return &Modale{
 		Text: p,
 		Type: t,

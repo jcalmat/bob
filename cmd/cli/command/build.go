@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/jcalmat/bob/cmd/cli/ui"
 	"github.com/jcalmat/bob/pkg/config"
 	"github.com/jcalmat/bob/pkg/file"
@@ -20,6 +21,7 @@ import (
 type Form struct {
 	form            *ui.Form
 	screen          *ui.Screen
+	settings        config.Settings
 	template        config.Template
 	stringQuestions map[string]*widgets.TextField
 	boolQuestions   map[string]*widgets.Checkbox
@@ -65,19 +67,13 @@ func (c Command) Build(args ...string) {
 	buildForm := &Form{
 		form:            ui.NewForm(),
 		screen:          c.Screen,
+		settings:        globalConfig.Settings,
 		skipMap:         make(map[string]struct{}),
 		stringQuestions: make(map[string]*widgets.TextField),
 		boolQuestions:   make(map[string]*widgets.Checkbox),
 	}
 
-	// form := ui.NewForm()
-
 	for _, s := range command.Templates {
-
-		// replacementMap := make(map[string]interface{})
-
-		// skipMap := make(map[string]struct{})
-
 		t, ok := templates[s]
 		if !ok {
 			io.Info("Template %s not found, skipping\n\n", s)
@@ -97,10 +93,33 @@ func (c Command) Build(args ...string) {
 
 		infos.WriteString(fmt.Sprintf("Current path: %s\n\n", file.GetWorkingDirectory()))
 
-		// var close bool
 		closeButton := widgets.NewButton("Done", func() {
-			buildForm.ProcessBuild(path)
-			// close = true
+			err := buildForm.ProcessBuild(path)
+			if err != nil {
+				modale := ui.NewModale(fmt.Sprintln(err.Error()), ui.ModaleTypeErr)
+				modale.Resize()
+				modale.Render()
+				c.Screen.SetModale(modale)
+				return
+			}
+			modale := ui.NewModale(`
+			Done
+			Press Enter to quit
+			`, ui.ModaleTypeInfo)
+			modale.Resize()
+			modale.Render()
+			c.Screen.SetModale(modale)
+
+			uiEvents := termui.PollEvents()
+			for {
+				e := <-uiEvents
+				buildForm.form.Content.HandleKeyboard(e)
+				switch e.ID {
+				case "<Enter>":
+					c.Screen.Stop()
+					return
+				}
+			}
 		})
 
 		nodes := []*widgets.FormNode{
@@ -141,40 +160,37 @@ func (c Command) Build(args ...string) {
 	}
 }
 
-func (f *Form) ProcessBuild(path *widgets.TextField) {
+func (f *Form) ProcessBuild(path *widgets.TextField) error {
 	replacementMap := make(map[string]interface{})
 
 	dir, err := ioutil.TempDir("", "bob")
 	if err != nil {
-		modale := ui.NewModale(fmt.Sprintf("failed to create temp dir: %s\n", err.Error()), ui.ModaleTypeErr)
-		modale.Resize()
-		modale.Render()
-		f.screen.SetModale(modale)
-		return
+		return fmt.Errorf("failed to create temp dir: %s", err.Error())
 	}
 	defer os.RemoveAll(dir) // clean up
 
-	if f.template.Git != "" {
-		_, err := git.PlainClone(dir, false, &git.CloneOptions{
-			URL: f.template.Git,
-			// Progress: &infos,
-		})
+	cloneOpts := &git.CloneOptions{
+		URL: f.template.Git,
+		// Progress: &infos,
+	}
+
+	if _, err := os.Stat(f.settings.Git.SSH.PrivateKeyFile); err == nil {
+		auth, err := ssh.NewPublicKeysFromFile("git", f.settings.Git.SSH.PrivateKeyFile, f.settings.Git.SSH.PrivateKeyPassword)
 		if err != nil {
-			modale := ui.NewModale(fmt.Sprintf("failed to clone template: %s\n", err.Error()), ui.ModaleTypeErr)
-			modale.Resize()
-			modale.Render()
-			f.screen.SetModale(modale)
-			return
+			return fmt.Errorf("generate publickeys failed: %s", err.Error())
+		}
+		cloneOpts.Auth = auth
+	}
+	if f.template.Git != "" {
+		_, err := git.PlainClone(dir, false, cloneOpts)
+		if err != nil {
+			return fmt.Errorf("failed to clone template: %s", err.Error())
 		}
 		f.template.Path = dir
 	} else {
 		err := file.Copy(f.template.Path, dir)
 		if err != nil {
-			modale := ui.NewModale(fmt.Sprintf("failed to copy template: %s\n", err.Error()), ui.ModaleTypeErr)
-			modale.Resize()
-			modale.Render()
-			f.screen.SetModale(modale)
-			return
+			return fmt.Errorf("failed to copy template: %s", err.Error())
 		}
 	}
 
@@ -234,42 +250,16 @@ func (f *Form) ProcessBuild(path *widgets.TextField) {
 
 		err = parseFiles(dir)
 		if err != nil {
-			modale := ui.NewModale(err.Error(), ui.ModaleTypeErr)
-			modale.Resize()
-			modale.Render()
-			f.screen.SetModale(modale)
-			return
+			return err
 		}
-
 	}
 
 	err = file.Move(dir, path.Answer(), f.template.Skip)
 	if err != nil {
-		modale := ui.NewModale(err.Error(), ui.ModaleTypeErr)
-		modale.Resize()
-		modale.Render()
-		f.screen.SetModale(modale)
-		return
+		return err
 	}
 
-	modale := ui.NewModale(`
-	Done
-	Press Enter to quit
-	`, ui.ModaleTypeInfo)
-	modale.Resize()
-	modale.Render()
-	f.screen.SetModale(modale)
-
-	uiEvents := termui.PollEvents()
-	for {
-		e := <-uiEvents
-		f.form.Content.HandleKeyboard(e)
-		switch e.ID {
-		case "<Enter>":
-			f.screen.Stop()
-			return
-		}
-	}
+	return nil
 }
 
 func (f *Form) parseQuestion(v config.Variable) *widgets.FormNode {
@@ -279,7 +269,6 @@ func (f *Form) parseQuestion(v config.Variable) *widgets.FormNode {
 	}
 
 	var node = &widgets.FormNode{}
-	// var item form.Item
 	var item widgets.FormItem
 
 	switch v.Type {

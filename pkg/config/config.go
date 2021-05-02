@@ -3,11 +3,25 @@ package config
 type C struct {
 	Commands  map[string]Command
 	Templates map[string]Template
+	Settings  Settings `yaml:"settings" json:"settings"`
 }
+
 type Command struct {
-	// Alias     string   `yaml:"alias" json:"alias"`
 	Description string   `yaml:"description" json:"description"`
 	Templates   []string `yaml:"templates" json:"templates"`
+}
+
+type Settings struct {
+	Git GitSettings `yaml:"git" json:"git"`
+}
+
+type GitSettings struct {
+	SSH SSHGitSettings `yaml:"ssh" json:"ssh"`
+}
+
+type SSHGitSettings struct {
+	PrivateKeyFile     string `yaml:"privateKeyFile" json:"privateKeyFile"`
+	PrivateKeyPassword string `yaml:"privateKeyPassword" json:"privateKeyPassword"`
 }
 
 type Template struct {
