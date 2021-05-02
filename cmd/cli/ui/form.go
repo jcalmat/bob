@@ -8,7 +8,6 @@ import (
 type Form struct {
 	Content *widgets.Form
 	Infos   *widgets.Paragraph
-	status  Status
 }
 
 func NewForm() *Form {

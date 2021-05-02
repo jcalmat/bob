@@ -13,7 +13,6 @@ import (
 	"github.com/jcalmat/bob/cmd/cli/ui"
 	"github.com/jcalmat/bob/pkg/config"
 	"github.com/jcalmat/bob/pkg/file"
-	"github.com/jcalmat/bob/pkg/io"
 	"github.com/jcalmat/termui/v3"
 	"github.com/jcalmat/termui/v3/widgets"
 )
@@ -76,7 +75,7 @@ func (c Command) Build(args ...string) {
 	for _, s := range command.Templates {
 		t, ok := templates[s]
 		if !ok {
-			io.Info("Template %s not found, skipping\n\n", s)
+			infos.WriteString(fmt.Sprintf("Template %s not found, skipping\n\n", s))
 			continue
 		}
 
