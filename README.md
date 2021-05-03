@@ -4,7 +4,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Linter](https://github.com/jcalmat/bob/workflows/golangci-lint/badge.svg)
 
-Bob is a CLI tool used to generate boilerplate code from templates made beforehand.
+## Introduction
+
+Bob is a tool used to generate boilerplate code.
+
+It was first made to avoid loosing too much time writing redundant code and allow developers to focus and dedicate more time on interesting parts of their projects.
+
+
+The main idea is to write boilerplate once for all and let bob do the code generation for you.
+
+Though, even if boilerplate represents redundant code, it could be slightly different from one file to another. Variables can change, blocks of code can exist in one but not in the other, this kind of things.
+This is why Bob addresses this issue by using a particular syntax to perform some modifications from your template to your final code. 
 
 ## Setup
 
@@ -20,7 +30,7 @@ Download the latest [release](https://github.com/jcalmat/bob/releases), unzip an
 
 ```bash
 $> go get -u github.com/jcalmat/bob
-$> bob init
+$> bob
 ```
 
 _OR_
@@ -28,109 +38,95 @@ _OR_
 ```
 $> git clone git@github.com:jcalmat/bob.git
 $> make install
-$> bob init
+$> bob
 ```
+
+
+## How to use it
 
 ### Configuration
 
-Bob settings should be stored in your home directory in a `.bobconfig.yml` file and contain the following fields
 
-```yaml
-# Register your commands here
-commands:
-  microservice:
-    alias: "microservice"   #alias is the key provided to bob to match this command
-    templates:
-      - my_microservice     #templates is an array containing one or multiple templates used during this command
- 
-  
-templates:
-  my_microservice:
-    #you can either provide a git link to be cloned or a template already in your local environment
-    #git: "github.com/USERNAME/templates/microservice.git"
-    path: "/path/to/your/template"
-    variables:  #variables are the variables to replace in your template
-      - "service"
-    skip: # files or folders to ignore, usefull when cloning a git project for example
-      - ".git"
-    
+Bob is asking you to do 2 things in order to work:
+- Create template(s) of boilerplate code
+- Registering those templates to a config file written in yaml or json in your root directory. This file shall be named .bobconfig.yaml/.bobconfig.yml/.bobconfig.json
 
-```
+To generate your first config file, run `bob` and select `Init`.
+
 
 ## Templates
 
-Templates are prebuilt formatted pieces of code
+Bob uses the `go templates` syntax to parse and replace variables, here is what go template documentation can say about it:
 
-### **Variables format**
+```
+The input text for a template is UTF-8-encoded text in any format.
+"Actions"--data evaluations or control structures--are delimited by "{{" and "}}"; all text outside actions is copied to the output unchanged. Except for raw strings, actions may not span newlines, although comments can.
+```
 
-Bob uses go templates to parse and replace the variables, thus these variables must be formatted with double brackets `{{VARIABLE}}`.
+For more information about the format, here is a cheat sheet: https://golang.org/pkg/text/template/#hdr-Actions.
 
-For more information about the format, here is a [cheat sheet](https://curtisvermeeren.github.io/2017/09/14/Golang-Templates-Cheatsheet).
+_If it doesn't make a lot of sense at first glance, it will quickly, don't worry._
 
-**Custom functions**
 
-To ease your development and avoid variables duplication, bob has custom formatting methods:
+### The Basics
 
-- **`short`** will truncate the x first characters of your variable
-- **`upcase`** will capitalize your variable
-- **`title`** will return a copy of the string s with all Unicode letters that begin words mapped to their Unicode title case
+Given the file `example.js` with the following line of code:
 
-Note: you can also pile the functions up
+```js
+var {{.my_variable}}
+```
 
-### Conditional templates
+Given the following `.bobconfig.yaml`:
 
-To be more flexible, you can add conditions to your template to ask the user if he wants to add a particular piece of code.
+```yaml
+commands:
+  test:
+    templates:
+      - test
 
+templates:
+  test:
+    path: "/path/to/example.js"
+    variables:
+      - name: "my_variable"
+        type: "string"
+```
+
+When you run bob, it will automatically propose you to replace "my_variable" by any string and ask you where to put your newly created boiler file.
+
+## Special variables
+
+Since bob uses go template to perform the variable replacement, it has some interesting specificities.
+You can, for instance, perform conditional operations.
+
+Ex:
 ```go
-{{if .print_hello}}
-fmt.Println("Hello world")
+{{if .my_variable}}
+// do something only if .my_variable is defined
 {{end}}
 ```
 
-This print method will be in final code only if the variable `print_hello` is defined.
+Bob also ships with homemade functions to ease string formatting
+- `{{short .my_variable [X]}}` will only keep the X first characters of your variable
+- `{{upcase .my_variable}}` will capitalize your variable
+- `{{title .my_variable}}` will return a copy of the string s with all Unicode letters that begin words mapped to their Unicode title case
 
-`print_hello` can be a boolean or a string. If the string is empty, the block won't be included.
-
-yaml example:
-
+Ex:
 ```go
-templates:
-  microservice_pkg:
-    git: ""
-    variables:
-      - name: "print_hello"
-        type: "bool"
-        desc: "Do you want to print the hello world? [y/n] " // desc will override the replacement question asked to the user
+{{title .my_variable}}
+// .my_variable = test -> Test
+
+{{short .my_variable 1}}
+// .my_variable = test -> t
+
+{{upcase .my_variable}}
+// .my_variable = test -> TEST
 ```
 
-### In depth examples
+You can even combine multiple functions.
 
-[See here](./examples) for more in-depth examples
-
-### Help
-
-```bash
-$> bob --help
-
- ______     ______     ______
-/\  == \   /\  __ \   /\  == \
-\ \  __<   \ \ \/\ \  \ \  __<
- \ \_____\  \ \_____\  \ \_____\
-  \/_____/   \/_____/   \/_____/
-
-Bob is a tool for creating flexible pieces of code from templates.
-
-Usage:
-  bob [command]
-
-Available Commands:
-  build       build a project from a specified template
-  help        Help about any command
-  init        initialize bob's config file
-
-Flags:
-      --config string   config file (default is $HOME/.bobconfig)
-  -h, --help            help for bob
-
-Use "bob [command] --help" for more information about a command.
+Ex:
+```go
+{{short .my_variable 3 | upcase}}
+// my_variable = test -> TES
 ```
