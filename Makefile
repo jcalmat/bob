@@ -21,13 +21,15 @@ all: vendor build
 build: ## Build bob in bin
 	$(info $(M) building bob…) @
 	$Q $(GO) build \
+		-ldflags '-X main.version=$(VERSION)' \
 		-o bin/$(PACKAGE)_$(CLI)_$(VERSION)
 	$Q cp bin/$(PACKAGE)_$(CLI)_$(VERSION) bin/$(PACKAGE)
 
 .PHONY: install
 install: ## Install bob
 	$(info $(M) installing bob…) @
-	$Q $(GO) install
+	$Q $(GO) install \
+	-ldflags '-X main.version=$(VERSION)'
 
 # Vendor
 .PHONY: vendor

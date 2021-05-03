@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 
 	"github.com/jcalmat/bob/cmd/cli/command"
@@ -11,9 +13,19 @@ import (
 
 var (
 	configFilePath string = "~/.bobconfig.yml"
+	version        string
 )
 
 func main() {
+
+	// handle flags
+	displayVersion := flag.Bool("v", false, "display bob version")
+	flag.Parse()
+	if *displayVersion {
+		fmt.Println(version)
+		return
+	}
+
 	absPath, _ := homedir.Expand(configFilePath)
 	configApp := app.App{
 		ConfigFilePath: absPath,
