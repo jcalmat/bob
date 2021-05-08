@@ -85,6 +85,8 @@ func (s *Screen) Resize() {
 	for _, i := range s.Items {
 		i.Resize()
 	}
+	s.Headers.Resize()
+	s.Headers.Render()
 }
 
 func (s *Screen) Restore() {

@@ -2,11 +2,11 @@ package command
 
 import (
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
-	"text/template"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
@@ -104,6 +104,7 @@ func (c Command) Build(args ...string) {
 			modale := ui.NewModale(`
 			Done
 			Press Enter to quit
+			Esc to get back to main menu
 			`, ui.ModaleTypeInfo)
 			modale.Resize()
 			modale.Render()
@@ -116,6 +117,10 @@ func (c Command) Build(args ...string) {
 				switch e.ID {
 				case "<Enter>":
 					c.Screen.Stop()
+					return
+				case "<Escape>":
+					c.Screen.Restore()
+					c.Screen.Restore()
 					return
 				}
 			}

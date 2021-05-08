@@ -41,26 +41,7 @@ func main() {
 		Screen:    screen,
 	}
 
-	mainMenu := ui.NewMenu()
-	mainMenu.AddOptions([]ui.MenuOption{
-		{
-			Name:        "Build",
-			Handler:     handler.BuildMenu,
-			Description: "Build a project from a specified template",
-		},
-		{
-			Name:        "Init",
-			Handler:     handler.Init,
-			Description: "Initialize a new .bobconfig file if it doesn't already exist.",
-		},
-		{
-			Name:        "Help",
-			Description: "Help contains some explanations about Bob, indicating what it is precisely and how to use it.",
-			Handler:     handler.Help,
-		},
-	})
-
-	screen.SetMenu(mainMenu)
+	handler.MainMenu()
 
 	screen.Run()
 }
