@@ -1,14 +1,16 @@
 package config
 
 type C struct {
-	Commands  map[string]Command
-	Templates map[string]Template
-	Settings  Settings `yaml:"settings" json:"settings"`
+	Commands map[string]Command
+	Settings Settings `yaml:"settings" json:"settings"`
 }
 
 type Command struct {
-	Description string   `yaml:"description" json:"description"`
-	Templates   []string `yaml:"templates" json:"templates"`
+	Description string     `yaml:"description" json:"description"`
+	Path        string     `yaml:"path" json:"path"`
+	Git         string     `yaml:"git" json:"git"`
+	Variables   []Variable `yaml:"variables" json:"variables"`
+	Skip        []string   `yaml:"skip" json:"skip"`
 }
 
 type Settings struct {
@@ -22,13 +24,6 @@ type GitSettings struct {
 type SSHGitSettings struct {
 	PrivateKeyFile     string `yaml:"privateKeyFile" json:"privateKeyFile"`
 	PrivateKeyPassword string `yaml:"privateKeyPassword" json:"privateKeyPassword"`
-}
-
-type Template struct {
-	Path      string     `yaml:"path" json:"path"`
-	Git       string     `yaml:"git" json:"git"`
-	Variables []Variable `yaml:"variables" json:"variables"`
-	Skip      []string   `yaml:"skip" json:"skip"`
 }
 
 type Variable struct {

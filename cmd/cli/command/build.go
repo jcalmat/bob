@@ -21,7 +21,7 @@ type Form struct {
 	form            *ui.Form
 	screen          *ui.Screen
 	settings        config.Settings
-	template        config.Template
+	command         config.Command
 	stringQuestions map[string]*widgets.TextField
 	boolQuestions   map[string]*widgets.Checkbox
 	skipMap         map[string]struct{}
@@ -61,7 +61,6 @@ func (c Command) Build(args ...string) {
 	cmd := args[0]
 
 	command := globalConfig.Commands[cmd]
-	templates := globalConfig.Templates
 
 	buildForm := &Form{
 		form:            ui.NewForm(),
@@ -72,98 +71,90 @@ func (c Command) Build(args ...string) {
 		boolQuestions:   make(map[string]*widgets.Checkbox),
 	}
 
-	for _, s := range command.Templates {
-		t, ok := templates[s]
-		if !ok {
-			infos.WriteString(fmt.Sprintf("Template %s not found, skipping\n\n", s))
-			continue
+	buildForm.command = command
+
+	buildForm.form.SetTitle(cmd)
+
+	if command.Git != "" {
+		infos.WriteString(fmt.Sprintf("Cloning template from: %s\n\n", command.Git))
+	} else {
+		infos.WriteString(fmt.Sprintf("Using template path: %s\n\n", command.Path))
+	}
+	path := widgets.NewTextField("Where do you want to copy this template? ")
+
+	infos.WriteString(fmt.Sprintf("Current path: %s\n\n", file.GetWorkingDirectory()))
+
+	closeButton := widgets.NewButton("Done", func() {
+		err := buildForm.ProcessBuild(path)
+		if err != nil {
+			modale := ui.NewModale(fmt.Sprintln(err.Error()), ui.ModaleTypeErr)
+			modale.Resize()
+			modale.Render()
+			c.Screen.SetModale(modale)
+			return
 		}
-
-		buildForm.template = t
-
-		buildForm.form.SetTitle(s)
-
-		if t.Git != "" {
-			infos.WriteString(fmt.Sprintf("Cloning template from: %s\n\n", t.Git))
-		} else {
-			infos.WriteString(fmt.Sprintf("Using template path: %s\n\n", t.Path))
-		}
-		path := widgets.NewTextField("Where do you want to copy this template? ")
-
-		infos.WriteString(fmt.Sprintf("Current path: %s\n\n", file.GetWorkingDirectory()))
-
-		closeButton := widgets.NewButton("Done", func() {
-			err := buildForm.ProcessBuild(path)
-			if err != nil {
-				modale := ui.NewModale(fmt.Sprintln(err.Error()), ui.ModaleTypeErr)
-				modale.Resize()
-				modale.Render()
-				c.Screen.SetModale(modale)
-				return
-			}
-			modale := ui.NewModale(`
+		modale := ui.NewModale(`
 			Done
 			Press Enter to quit
 			Esc to get back to main menu
 			`, ui.ModaleTypeInfo)
-			modale.Resize()
-			modale.Render()
-			c.Screen.SetModale(modale)
+		modale.Resize()
+		modale.Render()
+		c.Screen.SetModale(modale)
 
-			uiEvents := termui.PollEvents()
-			for {
-				e := <-uiEvents
-				switch e.ID {
-				case "<C-c>":
-					c.Screen.Stop()
-					return
-				case "<Enter>":
-					c.Screen.Stop()
-					return
-				case "<Escape>":
-					c.Screen.Restore()
-					c.Screen.Restore()
-					return
-				}
+		uiEvents := termui.PollEvents()
+		for {
+			e := <-uiEvents
+			switch e.ID {
+			case "<C-c>":
+				c.Screen.Stop()
+				return
+			case "<Enter>":
+				c.Screen.Stop()
+				return
+			case "<Escape>":
+				c.Screen.Restore()
+				c.Screen.Restore()
+				return
 			}
-		})
-
-		nodes := []*widgets.FormNode{
-			{
-				Item: path,
-			},
-			{
-				Item: widgets.NewLabel(""),
-			},
-			{
-				Item: widgets.NewLabel("==== Variable replacement ===="),
-			},
-			{
-				Item: widgets.NewLabel(""),
-			},
 		}
+	})
 
-		for _, v := range t.Variables {
-			nodes = append(nodes, buildForm.parseQuestion(v))
-		}
-
-		nodes = append(nodes, &widgets.FormNode{
+	nodes := []*widgets.FormNode{
+		{
+			Item: path,
+		},
+		{
 			Item: widgets.NewLabel(""),
-		})
-
-		nodes = append(nodes, &widgets.FormNode{
-			Item: closeButton,
-		})
-
-		for _, v := range t.Skip {
-			buildForm.skipMap[v] = struct{}{}
-		}
-
-		buildForm.form.SetNodes(nodes)
-		buildForm.form.SetInfos(infos.String())
-		c.Screen.SetForm(buildForm.form)
-		buildForm.form.Render()
+		},
+		{
+			Item: widgets.NewLabel("==== Variable replacement ===="),
+		},
+		{
+			Item: widgets.NewLabel(""),
+		},
 	}
+
+	for _, v := range command.Variables {
+		nodes = append(nodes, buildForm.parseQuestion(v))
+	}
+
+	nodes = append(nodes, &widgets.FormNode{
+		Item: widgets.NewLabel(""),
+	})
+
+	nodes = append(nodes, &widgets.FormNode{
+		Item: closeButton,
+	})
+
+	for _, v := range command.Skip {
+		buildForm.skipMap[v] = struct{}{}
+	}
+
+	buildForm.form.SetNodes(nodes)
+	buildForm.form.SetInfos(infos.String())
+	c.Screen.SetForm(buildForm.form)
+	buildForm.form.Render()
 }
 
 func (f *Form) ProcessBuild(path *widgets.TextField) error {
@@ -176,7 +167,7 @@ func (f *Form) ProcessBuild(path *widgets.TextField) error {
 	defer os.RemoveAll(dir) // clean up
 
 	cloneOpts := &git.CloneOptions{
-		URL: f.template.Git,
+		URL: f.command.Git,
 		// Progress: &infos,
 	}
 
@@ -187,14 +178,14 @@ func (f *Form) ProcessBuild(path *widgets.TextField) error {
 		}
 		cloneOpts.Auth = auth
 	}
-	if f.template.Git != "" {
+	if f.command.Git != "" {
 		_, err := git.PlainClone(dir, false, cloneOpts)
 		if err != nil {
 			return fmt.Errorf("failed to clone template: %s", err.Error())
 		}
-		f.template.Path = dir
+		f.command.Path = dir
 	} else {
-		err := file.Copy(f.template.Path, dir)
+		err := file.Copy(f.command.Path, dir)
 		if err != nil {
 			return fmt.Errorf("failed to copy template: %s", err.Error())
 		}
@@ -276,7 +267,7 @@ func (f *Form) ProcessBuild(path *widgets.TextField) error {
 		return err
 	}
 
-	err = file.Move(dir, path.Answer(), f.template.Skip)
+	err = file.Move(dir, path.Answer(), f.command.Skip)
 	if err != nil {
 		return err
 	}
