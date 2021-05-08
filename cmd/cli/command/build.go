@@ -113,8 +113,10 @@ func (c Command) Build(args ...string) {
 			uiEvents := termui.PollEvents()
 			for {
 				e := <-uiEvents
-				buildForm.form.Content.HandleKeyboard(e)
 				switch e.ID {
+				case "<C-c>":
+					c.Screen.Stop()
+					return
 				case "<Enter>":
 					c.Screen.Stop()
 					return

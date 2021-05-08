@@ -33,10 +33,12 @@ func NewModale(s string, t ModaleType) *Modale {
 	}
 }
 
+// Render implements Item interface
 func (m *Modale) Render() {
 	ui.Render(m.Text)
 }
 
+// Resize implements Item interface
 func (m *Modale) Resize() {
 	x, y := ui.TerminalDimensions()
 	_ = x
@@ -44,13 +46,5 @@ func (m *Modale) Resize() {
 	m.Text.SetRect(x/2+int(0.2*float64(x/2)), y/2+int(0.2*float64(y/2)), x/2-int(0.2*float64(x/2)), y/2-int(0.2*float64(y/2)))
 }
 
-func (m *Modale) HandleEvent(e ui.Event) {
-	// switch e.ID {
-	// case "<Enter>":
-	// 	fn := m.menuOptions[m.Options.Rows[m.Options.SelectedRow][2:]].Handler
-	// 	if fn != nil {
-	// 		fn(m.Options.Rows[m.Options.SelectedRow][2:])
-	// 	}
-	// }
-	m.Render()
-}
+// HandleEvent implements Item interface
+func (m *Modale) HandleEvent(e ui.Event) {}

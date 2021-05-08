@@ -4,28 +4,9 @@ In this folder you'll find a `example.js` file containing few examples and a cor
 
 ### How to use it
 
-* You don't have any config file yet
+1. Open the config file and adapt the template path
+2. Copy the .bobconfig file in your home directory
+3. Run bob
 
-```bash
-$> git clone git@github.com:jcalmat/bob.git
-$> cd bob
-$> sed -i 's?/path\/to\/this\/project?'`pwd`'?' examples/.bobconfig.yml
-$> cp examples/.bobconfig.yml ~/ #copy the provided config file
-$> make install
-$> bob build example
-```
+That's it!
 
-* You already have a config file
-
-```bash
-$> git clone git@github.com:jcalmat/bob.git
-$> cd bob
-$> sed -i 's?/path\/to\/this\/project?'`pwd`'?' examples/.bobconfig.yml
-```
-
-Take the command + template from the [config file](.bobconfig.yml) and add them to your own config file
-
-```bash
-$> make install
-$> bob build example
-```

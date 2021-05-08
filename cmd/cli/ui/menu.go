@@ -38,6 +38,7 @@ func (m *Menu) AddOptions(os []MenuOption) {
 	m.buildDescription()
 }
 
+// Render implements Item interface
 func (m *Menu) Render() {
 	ui.Render(m.Options)
 	if len(m.Options.Rows) > m.Options.SelectedRow {
@@ -48,6 +49,7 @@ func (m *Menu) Render() {
 	ui.Render(m.Description)
 }
 
+// Resize implements Item interface
 func (m *Menu) Resize() {
 	x, y := ui.TerminalDimensions()
 
@@ -55,6 +57,7 @@ func (m *Menu) Resize() {
 	m.Description.SetRect(x, 12, x/2, y)
 }
 
+// HandleEvent implements Item interface
 func (m *Menu) HandleEvent(e ui.Event) {
 	switch e.ID {
 	case "<Down>":

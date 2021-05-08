@@ -35,6 +35,7 @@ func (f *Form) SetInfos(s string) {
 	f.Infos.Text = s
 }
 
+// Render implements Item interface
 func (f *Form) Render() {
 	if f.Infos == nil {
 		f.buildInfos()
@@ -44,6 +45,7 @@ func (f *Form) Render() {
 	ui.Render(f.Infos)
 }
 
+// Resize implements Item interface
 func (f *Form) Resize() {
 	x, y := ui.TerminalDimensions()
 
@@ -51,6 +53,7 @@ func (f *Form) Resize() {
 	f.Infos.SetRect(x, 12, x/2, y)
 }
 
+// HandleEvent implements Item interface
 func (f *Form) HandleEvent(e ui.Event) {
 	f.Content.HandleKeyboard(e)
 

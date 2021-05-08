@@ -130,3 +130,9 @@ Ex:
 {{short .my_variable 3 | upcase}}
 // my_variable = test -> TES
 ```
+
+### Opinionated demo
+
+Here is a small demo with one of my templates: creation of an entire compilable microservice.
+
+![demo](./_examples/demo.gif)

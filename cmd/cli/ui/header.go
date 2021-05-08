@@ -17,10 +17,12 @@ func NewHeader() *Header {
 	return h
 }
 
+// Render implements Item interface
 func (h *Header) Render() {
 	ui.Render(h.Logo, h.Help)
 }
 
+// Resize implements Item interface
 func (h *Header) Resize() {
 	x, _ := ui.TerminalDimensions()
 
@@ -28,6 +30,7 @@ func (h *Header) Resize() {
 	h.Help.SetRect(x, 0, x/2, 12)
 }
 
+// HandleEvent implements Item interface
 func (h *Header) HandleEvent(e ui.Event) {}
 
 func (h *Header) buildHeader() *widgets.Paragraph {
