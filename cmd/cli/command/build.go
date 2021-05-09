@@ -319,7 +319,7 @@ func (b *Builder) ProcessBuild(path *widgets.TextField) error {
 
 // parseQuestion convert a config.Variable to a termui FormNode
 func (b *Builder) parseQuestion(v config.Variable) *widgets.FormNode {
-	question := fmt.Sprintf("%s", v.Name)
+	question := v.Name
 	if v.Format != nil {
 		question = *v.Format
 	}
