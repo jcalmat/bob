@@ -8,9 +8,7 @@ func (c Command) BuildMenu(args ...string) {
 
 	globalConfig, err := c.ConfigApp.Parse()
 	if err != nil {
-		modale := ui.NewModale(err.Error(), ui.ModaleTypeErr)
-		modale.Render()
-		c.Screen.SetModale(modale)
+		c.Screen.RenderModale(err.Error(), ui.ModaleTypeErr)
 		return
 	}
 

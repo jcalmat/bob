@@ -1,6 +1,7 @@
 package command
 
 import (
+	"errors"
 	"fmt"
 	"html/template"
 	"io/ioutil"
@@ -17,17 +18,19 @@ import (
 	"github.com/jcalmat/termui/v3/widgets"
 )
 
-type Form struct {
+type Builder struct {
 	form            *ui.Form
 	screen          *ui.Screen
 	settings        config.Settings
 	command         config.Command
+	configApp       config.App
+	temporaryPath   string
 	stringQuestions map[string]*widgets.TextField
 	boolQuestions   map[string]*widgets.Checkbox
 	skipMap         map[string]struct{}
 }
 
-// predefine functions
+// predefine functions used in go-template
 var funcMap = template.FuncMap{
 	// truncate the i first chars of s
 	"short": func(s string, i int) string {
@@ -60,47 +63,46 @@ func (c Command) Build(args ...string) {
 
 	cmd := args[0]
 
-	command := globalConfig.Commands[cmd]
-
-	buildForm := &Form{
+	builder := &Builder{
 		form:            ui.NewForm(),
 		screen:          c.Screen,
 		settings:        globalConfig.Settings,
 		skipMap:         make(map[string]struct{}),
 		stringQuestions: make(map[string]*widgets.TextField),
 		boolQuestions:   make(map[string]*widgets.Checkbox),
+		configApp:       c.ConfigApp,
+		command:         globalConfig.Commands[cmd],
 	}
 
-	buildForm.command = command
+	err = builder.ParseSubConfigSpecs(cmd)
+	if err != nil {
+		c.Screen.RenderModale(err.Error(), ui.ModaleTypeErr)
+		return
+	}
 
-	buildForm.form.SetTitle(cmd)
+	builder.form.SetTitle(cmd)
 
-	if command.Git != "" {
-		infos.WriteString(fmt.Sprintf("Cloning template from: %s\n\n", command.Git))
+	if builder.command.Git != "" {
+		infos.WriteString(fmt.Sprintf("Cloning template from: %s\n\n", builder.command.Git))
 	} else {
-		infos.WriteString(fmt.Sprintf("Using template path: %s\n\n", command.Path))
+		infos.WriteString(fmt.Sprintf("Using template path: %s\n\n", builder.command.Path))
 	}
 	path := widgets.NewTextField("Where do you want to copy this template? ")
 
 	infos.WriteString(fmt.Sprintf("Current path: %s\n\n", file.GetWorkingDirectory()))
 
 	closeButton := widgets.NewButton("Done", func() {
-		err := buildForm.ProcessBuild(path)
+		err := builder.ProcessBuild(path)
 		if err != nil {
-			modale := ui.NewModale(fmt.Sprintln(err.Error()), ui.ModaleTypeErr)
-			modale.Resize()
-			modale.Render()
-			c.Screen.SetModale(modale)
+			c.Screen.RenderModale(err.Error(), ui.ModaleTypeErr)
 			return
 		}
-		modale := ui.NewModale(`
+
+		c.Screen.RenderModale(`
 			Done
 			Press Enter to quit
 			Esc to get back to main menu
-			`, ui.ModaleTypeInfo)
-		modale.Resize()
-		modale.Render()
-		c.Screen.SetModale(modale)
+		`, ui.ModaleTypeInfo)
 
 		uiEvents := termui.PollEvents()
 		for {
@@ -135,8 +137,8 @@ func (c Command) Build(args ...string) {
 		},
 	}
 
-	for _, v := range command.Variables {
-		nodes = append(nodes, buildForm.parseQuestion(v))
+	for _, v := range builder.command.Variables {
+		nodes = append(nodes, builder.parseQuestion(v))
 	}
 
 	nodes = append(nodes, &widgets.FormNode{
@@ -147,54 +149,94 @@ func (c Command) Build(args ...string) {
 		Item: closeButton,
 	})
 
-	for _, v := range command.Skip {
-		buildForm.skipMap[v] = struct{}{}
+	for _, v := range builder.command.Skip {
+		builder.skipMap[v] = struct{}{}
 	}
 
-	buildForm.form.SetNodes(nodes)
-	buildForm.form.SetInfos(infos.String())
-	c.Screen.SetForm(buildForm.form)
-	buildForm.form.Render()
+	builder.form.SetNodes(nodes)
+	builder.form.SetInfos(infos.String())
+	c.Screen.SetForm(builder.form)
+	builder.form.Render()
 }
 
-func (f *Form) ProcessBuild(path *widgets.TextField) error {
-	replacementMap := make(map[string]interface{})
+// ParseSubconfigSpecs will look for bobconfig file inside the template itself
+// and parse it if found
+func (b *Builder) ParseSubConfigSpecs(cmd string) error {
+	err := b.Clone()
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(b.temporaryPath) // clean up
 
+	s, err := b.configApp.ParseSpecs(b.temporaryPath)
+	if err != nil {
+		// ignore if there is no subconfig file
+		if !errors.Is(err, config.ErrConfigFileNotFound) {
+			return err
+		}
+		return nil
+	}
+
+	b.command.Specs = s
+
+	return nil
+
+}
+
+// Clone either clone the project from a git repository either copy it from a
+// local folder to a temporary folder. It doesn't remove the temporary folder,
+// it is the caller's responsibility to remove the directory when no longer needed.
+func (b *Builder) Clone() error {
 	dir, err := ioutil.TempDir("", "bob")
 	if err != nil {
 		return fmt.Errorf("failed to create temp dir: %s", err.Error())
 	}
-	defer os.RemoveAll(dir) // clean up
 
 	cloneOpts := &git.CloneOptions{
-		URL: f.command.Git,
+		URL: b.command.Git,
 		// Progress: &infos,
 	}
 
-	if _, err := os.Stat(f.settings.Git.SSH.PrivateKeyFile); err == nil {
-		auth, err := ssh.NewPublicKeysFromFile("git", f.settings.Git.SSH.PrivateKeyFile, f.settings.Git.SSH.PrivateKeyPassword)
+	if _, err := os.Stat(b.settings.Git.SSH.PrivateKeyFile); err == nil {
+		auth, err := ssh.NewPublicKeysFromFile("git", b.settings.Git.SSH.PrivateKeyFile, b.settings.Git.SSH.PrivateKeyPassword)
 		if err != nil {
 			return fmt.Errorf("generate publickeys failed: %s", err.Error())
 		}
 		cloneOpts.Auth = auth
 	}
-	if f.command.Git != "" {
+	if b.command.Git != "" {
 		_, err := git.PlainClone(dir, false, cloneOpts)
 		if err != nil {
 			return fmt.Errorf("failed to clone template: %s", err.Error())
 		}
-		f.command.Path = dir
+		b.command.Path = dir
 	} else {
-		err := file.Copy(f.command.Path, dir)
+		err := file.Copy(b.command.Path, dir)
 		if err != nil {
 			return fmt.Errorf("failed to copy template: %s", err.Error())
 		}
 	}
 
-	for k, v := range f.stringQuestions {
+	b.temporaryPath = dir
+
+	return nil
+}
+
+// ProcessBuild clones the template and replace all the actionable items
+// to the files contents, files names and directory names recursively.
+func (b *Builder) ProcessBuild(path *widgets.TextField) error {
+	replacementMap := make(map[string]interface{})
+
+	err := b.Clone()
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(b.temporaryPath)
+
+	for k, v := range b.stringQuestions {
 		replacementMap[k] = v.Answer()
 	}
-	for k, v := range f.boolQuestions {
+	for k, v := range b.boolQuestions {
 		replacementMap[k] = v.Answer()
 	}
 
@@ -207,7 +249,7 @@ func (f *Form) ProcessBuild(path *widgets.TextField) error {
 		}
 
 		for _, ff := range folderFiles {
-			if _, ok := f.skipMap[ff.Name()]; ok {
+			if _, ok := b.skipMap[ff.Name()]; ok {
 				continue
 			}
 
@@ -262,12 +304,12 @@ func (f *Form) ProcessBuild(path *widgets.TextField) error {
 		return nil
 	}
 
-	err = parseFiles(dir)
+	err = parseFiles(b.temporaryPath)
 	if err != nil {
 		return err
 	}
 
-	err = file.Move(dir, path.Answer(), f.command.Skip)
+	err = file.Move(b.temporaryPath, path.Answer(), b.command.Skip)
 	if err != nil {
 		return err
 	}
@@ -275,10 +317,11 @@ func (f *Form) ProcessBuild(path *widgets.TextField) error {
 	return nil
 }
 
-func (f *Form) parseQuestion(v config.Variable) *widgets.FormNode {
+// parseQuestion convert a config.Variable to a termui FormNode
+func (b *Builder) parseQuestion(v config.Variable) *widgets.FormNode {
 	question := fmt.Sprintf("%s: ", v.Name)
-	if v.Desc != nil {
-		question = *v.Desc
+	if v.Format != nil {
+		question = *v.Format
 	}
 
 	var node = &widgets.FormNode{}
@@ -288,23 +331,23 @@ func (f *Form) parseQuestion(v config.Variable) *widgets.FormNode {
 	case config.String:
 		textfield := widgets.NewTextField(question)
 		item = textfield
-		f.stringQuestions[v.Name] = textfield
+		b.stringQuestions[v.Name] = textfield
 	case config.Bool:
 		checkbox := widgets.NewCheckbox(question, false)
 		item = checkbox
-		f.boolQuestions[v.Name] = checkbox
+		b.boolQuestions[v.Name] = checkbox
 	case config.Array:
 	//TODO:
 	default:
 		//default case is string
 		textfield := widgets.NewTextField(fmt.Sprintf("%s: ", v.Name))
 		item = textfield
-		f.stringQuestions[v.Name] = textfield
+		b.stringQuestions[v.Name] = textfield
 	}
 
 	if v.Dependencies != nil {
 		for _, s := range v.Dependencies {
-			node.Nodes = append(node.Nodes, f.parseQuestion(s))
+			node.Nodes = append(node.Nodes, b.parseQuestion(s))
 		}
 	}
 

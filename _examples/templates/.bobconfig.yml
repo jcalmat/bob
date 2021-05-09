@@ -1,0 +1,11 @@
+vars:
+  - name: "my_variable"
+    type: "string"
+  - name: "print_variable"
+    type: "bool"
+    format: "Do you want to print the variables encapsulated in {{.print_variable}}?"
+    deps:
+      - name: "conditional_variable"
+        type: "string"
+skip:
+  - ".bobconfig.yml"

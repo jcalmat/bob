@@ -6,13 +6,16 @@ type C struct {
 }
 
 type Command struct {
-	Description string     `yaml:"description" json:"description"`
-	Path        string     `yaml:"path" json:"path"`
-	Git         string     `yaml:"git" json:"git"`
-	Variables   []Variable `yaml:"variables" json:"variables"`
-	Skip        []string   `yaml:"skip" json:"skip"`
+	Description string `yaml:"description" json:"description"`
+	Path        string `yaml:"path" json:"path"`
+	Git         string `yaml:"git" json:"git"`
+	Specs       `yaml:",inline" json:",inline"`
 }
 
+type Specs struct {
+	Variables []Variable `yaml:"vars" json:"vars"`
+	Skip      []string   `yaml:"skip" json:"skip"`
+}
 type Settings struct {
 	Git GitSettings `yaml:"git" json:"git"`
 }
@@ -27,9 +30,9 @@ type SSHGitSettings struct {
 }
 
 type Variable struct {
-	Name         string
-	Type         Type
-	Desc         *string
+	Name         string     `yaml:"name" json:"name"`
+	Type         Type       `yaml:"type" json:"type"`
+	Format       *string    `yaml:"format" json:"format"`
 	Dependencies []Variable `yaml:"deps" json:"deps"`
 }
 
@@ -48,5 +51,6 @@ const (
 
 type App interface {
 	Parse() (C, error)
+	ParseSpecs(string) (Specs, error)
 	InitConfig() error
 }

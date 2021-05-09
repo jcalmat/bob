@@ -48,3 +48,10 @@ func (m *Modale) Resize() {
 
 // HandleEvent implements Item interface
 func (m *Modale) HandleEvent(e ui.Event) {}
+
+func (s *Screen) RenderModale(msg string, t ModaleType) {
+	modale := NewModale(msg, t)
+	modale.Resize()
+	modale.Render()
+	s.SetModale(modale)
+}

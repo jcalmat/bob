@@ -1,16 +1,11 @@
 package file
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-)
-
-var (
-	ErrInvalidPath = errors.New("invalid path")
 )
 
 // GetWorkingDirectory returns the current path

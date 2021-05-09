@@ -8,18 +8,25 @@ import (
 	"path/filepath"
 
 	"github.com/jcalmat/bob/pkg/config"
+	"github.com/mitchellh/go-homedir"
 	"gopkg.in/yaml.v2"
 )
 
 type App struct {
-	ConfigFilePath string
 }
 
 var _ config.App = (*App)(nil)
 
+// Parse parse a bobconfig
 func (a App) Parse() (config.C, error) {
+
+	configPath, err := a.getConfigFile("~")
+	if err != nil {
+		return config.C{}, err
+	}
+
 	// open file
-	file, err := os.Open(a.ConfigFilePath)
+	file, err := os.Open(configPath)
 	if err != nil {
 		return config.C{}, err
 	}
@@ -29,7 +36,7 @@ func (a App) Parse() (config.C, error) {
 		return config.C{}, err
 	}
 
-	switch filepath.Ext(a.ConfigFilePath) {
+	switch filepath.Ext(configPath) {
 	case ".yaml", ".yml":
 		return parseYaml(content)
 	case ".json":
@@ -61,23 +68,93 @@ func parseJSON(content []byte) (config.C, error) {
 	return config, nil
 }
 
-func (a App) InitConfig() error {
-	config := []byte(`
-# Register your commands here
-commands:
+// getConfigFile retrieves the config file, wether it's a yaml or a json file
+func (a App) getConfigFile(dir string) (string, error) {
+	absPath, _ := homedir.Expand(dir)
+	var configPath string
 
-templates:
-
-settings:
-`)
-	_, err := os.Stat(a.ConfigFilePath)
-	if os.IsNotExist(err) {
-		err := ioutil.WriteFile(a.ConfigFilePath, config, 0600)
-		if err != nil {
-			return err
-		}
+	if _, err := os.Stat(filepath.Join(absPath, ".bobconfig.yml")); err == nil {
+		configPath = filepath.Join(absPath, ".bobconfig.yml")
+	} else if _, err := os.Stat(filepath.Join(absPath, ".bobconfig.yaml")); err == nil {
+		configPath = filepath.Join(absPath, ".bobconfig.yaml")
+	} else if _, err := os.Stat(filepath.Join(absPath, ".bobconfig.json")); err == nil {
+		configPath = filepath.Join(absPath, ".bobconfig.json")
 	} else {
-		return errors.New("config file already exist")
+		return "", config.ErrConfigFileNotFound
 	}
+
+	return configPath, nil
+}
+
+// ParseSpecs parses only the specs part of a bobconfig file
+func (a App) ParseSpecs(dir string) (config.Specs, error) {
+
+	configPath, err := a.getConfigFile(dir)
+	if err != nil {
+		return config.Specs{}, err
+	}
+
+	// open file
+	file, err := os.Open(configPath)
+	if err != nil {
+		return config.Specs{}, err
+	}
+
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		return config.Specs{}, err
+	}
+
+	switch filepath.Ext(configPath) {
+	case ".yaml", ".yml":
+		return parseYamlSpecs(content)
+	case ".json":
+		return parseJSONSpecs(content)
+	}
+
+	return config.Specs{}, errors.New("File extension not handled")
+}
+
+func parseYamlSpecs(content []byte) (config.Specs, error) {
+	var specs config.Specs
+
+	err := yaml.Unmarshal(content, &specs)
+	if err != nil {
+		return specs, err
+	}
+
+	return specs, nil
+}
+
+func parseJSONSpecs(content []byte) (config.Specs, error) {
+	var specs config.Specs
+
+	err := json.Unmarshal(content, &specs)
+	if err != nil {
+		return specs, err
+	}
+
+	return specs, nil
+}
+
+// TODO: move it into new command
+func (a App) InitConfig() error {
+	// 	config := []byte(`
+	// # Register your commands here
+	// commands:
+
+	// templates:
+
+	// settings:
+	// `)
+	// _, err := os.Stat(a.ConfigFilePath)
+	// if os.IsNotExist(err) {
+	// 	err := ioutil.WriteFile(a.ConfigFilePath, config, 0600)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// } else {
+	// 	return errors.New("config file already exist")
+	// }
 	return nil
 }
