@@ -32,7 +32,7 @@ type SSHGitSettings struct {
 type Variable struct {
 	Name         string     `yaml:"name" json:"name"`
 	Type         Type       `yaml:"type" json:"type"`
-	Format       *string    `yaml:"format" json:"format"`
+	Format       *string    `yaml:"format,omitempty" json:"format,omitempty"`
 	Dependencies []Variable `yaml:"deps" json:"deps"`
 }
 

@@ -4,7 +4,7 @@ vars:
   - name: "print_variable"
     type: "bool"
     format: "Do you want to print the variables encapsulated in {{.print_variable}}?"
-    deps:
+    deps: # the following variables will be displayed only if print_variable is true
       - name: "conditional_variable"
         type: "string"
 skip:
