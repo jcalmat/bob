@@ -1,4 +1,3 @@
 commands:
   example:
-    alias: "example"
     path: "/path/to/templates_dir"
