@@ -112,6 +112,27 @@ Your template:
 ##### Config category
 Config allows you to input a ssh key (+ password if needed) to clone projects from a private repository.
 
+## Embedded config files
+
+If you don't want to bloat your main bobconfig file, you can embed part of it directly in your template.
+
+Ex:
+```yaml
+# ~/.bobconfig.yaml
+commands:
+  example:
+    path: "/path/to/my/template"
+```
+```yaml
+# /path/to/my/template/.bobconfig.yaml
+vars:
+  - name: "my_variable"
+    type: "string"
+skip:
+  - ".bobconfig.yml" #this is recommended to avoid having the bobconfig file in your final code
+```
+
+
 ## Templates
 
 Bob uses the `go templates` syntax to parse and replace variables, here is what go template documentation can say about it:
