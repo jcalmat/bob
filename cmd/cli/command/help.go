@@ -52,13 +52,8 @@ func (c Command) Help(args ...string) {
 
 			commands:
 			  test:
-			    templates:
-			      - test
-			
-			templates:
-			  test:
 			    path: "/path/to/example.js"
-			    variables:
+			    vars:
 			      - name: "my_variable"
 			        type: "string"
 			
