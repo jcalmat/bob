@@ -52,6 +52,4 @@ const (
 type App interface {
 	Parse() (C, error)
 	ParseSpecs(string) (Specs, error)
-	InitJSONConfig() error
-	InitYamlConfig() error
 }

@@ -3,7 +3,6 @@ package app
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -136,63 +135,4 @@ func parseJSONSpecs(content []byte) (config.Specs, error) {
 	}
 
 	return specs, nil
-}
-
-func (a App) InitYamlConfig() error {
-	path, err := a.getConfigFile("~")
-	if err == nil {
-		return fmt.Errorf("config file already exist at %s", path)
-	}
-
-	config := []byte(`# Register your commands here
-commands:
-  example:
-    path: "/path/to/templates_dir"
-settings:
-git:
-  ssh:
-    privateKeyFile: "/home/user/.ssh/id_rsa"
-    privateKeyPassword: ""
-`)
-
-	absPath, _ := homedir.Expand("~")
-	err = ioutil.WriteFile(filepath.Join(absPath, ".bobconfig.yml"), config, 0600)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (a App) InitJSONConfig() error {
-	path, err := a.getConfigFile("~")
-	if err == nil {
-		return fmt.Errorf("config file already exist at %s", path)
-	}
-
-	config := []byte(`{
-	"commands": [
-		{
-			"example": {
-				"path": "/path/to/templates_dir"
-			}
-		}
-	],
-	"settings": {
-		"git": {
-			"ssh": {
-				"privateKeyFile": "/path/to/ssh/key",
-				"privateKeyPassword": "/password/for/this/key"
-			}
-		}
-	}
-}`)
-
-	absPath, _ := homedir.Expand("~")
-	err = ioutil.WriteFile(filepath.Join(absPath, ".bobconfig.json"), config, 0600)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
