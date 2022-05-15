@@ -17,6 +17,8 @@ import (
 	"github.com/jcalmat/bob/pkg/file"
 	"github.com/jcalmat/termui/v3"
 	"github.com/jcalmat/termui/v3/widgets"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type Builder struct {
@@ -50,7 +52,7 @@ var funcMap = template.FuncMap{
 	},
 
 	"title": func(s string) string {
-		return strings.Title(s)
+		return cases.Title(language.Und).String(s)
 	},
 }
 
