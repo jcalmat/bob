@@ -102,6 +102,9 @@ func (c Command) Help(args ...string) {
 
 	menu.Options.Title = "Help"
 	menu.Description.Title = ""
+
+	menu.Build()
+
 	c.Screen.SetMenu(menu)
 	menu.Render()
 }

@@ -15,7 +15,8 @@ type Menu struct {
 	Options     *widgets.List
 	Description *widgets.Paragraph
 
-	menuOptions map[string]MenuOption
+	menuOptions    map[string]MenuOption
+	orderedOptions []MenuOption
 }
 
 func NewMenu() *Menu {
@@ -28,13 +29,17 @@ func NewMenu() *Menu {
 
 func (m *Menu) AddOption(o MenuOption) {
 	m.menuOptions[o.Name] = o
+	m.orderedOptions = append(m.orderedOptions, o)
 }
 
 func (m *Menu) AddOptions(os []MenuOption) {
 	for _, o := range os {
-		m.menuOptions[o.Name] = o
+		m.AddOption(o)
 	}
-	m.buildOptions(os)
+}
+
+func (m *Menu) Build() {
+	m.buildOptions(m.orderedOptions)
 	m.buildDescription()
 }
 

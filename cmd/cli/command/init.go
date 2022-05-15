@@ -11,6 +11,7 @@ func (c Command) Init(_ ...string) {
 
 	menu := ui.NewMenu()
 	menu.Options.Title = "Which syntax do you prefer?"
+
 	menu.AddOptions([]ui.MenuOption{
 		{
 			Name:        "json",
@@ -23,6 +24,8 @@ func (c Command) Init(_ ...string) {
 			Description: "Initialize a new .bobconfig with yaml format",
 		},
 	})
+
+	menu.Build()
 
 	c.Screen.SetMenu(menu)
 	c.Screen.Render()

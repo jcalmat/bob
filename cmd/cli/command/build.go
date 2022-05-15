@@ -147,7 +147,13 @@ func (b Builder) SetupBuild(screen *ui.Screen) {
 
 	nodes = append(nodes, []*widgets.FormNode{
 		{
-			Item: widgets.NewLabel("==== Variable replacement ===="),
+			Item: widgets.NewLabel(" ----------------------"),
+		},
+		{
+			Item: widgets.NewLabel(" -  Customize fields  -"),
+		},
+		{
+			Item: widgets.NewLabel(" ----------------------"),
 		},
 		{
 			Item: widgets.NewLabel(""),
