@@ -2,7 +2,9 @@ package command
 
 import (
 	"github.com/jcalmat/bob/cmd/cli/ui"
-	"github.com/jcalmat/termui/v3"
+	"github.com/jcalmat/bob/pkg/config"
+	"github.com/jcalmat/termui/v3/widgets"
+	"github.com/mitchellh/go-homedir"
 )
 
 func (c Command) Init(_ ...string) {
@@ -29,40 +31,30 @@ func (c Command) Init(_ ...string) {
 func (c Command) initConfig(types ...string) {
 	t := types[0]
 
-	switch t {
-	case "json":
-		err := c.ConfigApp.InitJSONConfig()
-		if err != nil {
-			c.Screen.RenderModale(err.Error(), ui.ModaleTypeErr)
-			return
-		}
-	case "yaml":
-		err := c.ConfigApp.InitYamlConfig()
-		if err != nil {
-			c.Screen.RenderModale(err.Error(), ui.ModaleTypeErr)
-			return
-		}
+	config := config.C{
+		Commands: map[string]config.Command{
+			"json": {
+				Git: "https://github.com/jcalmat/bob_templates json_config",
+			},
+			"yaml": {
+				Git: "https://github.com/jcalmat/bob_templates yaml_config",
+			},
+		},
 	}
 
-	c.Screen.RenderModale(`
-			Done
-			Press Enter to quit
-			Esc to get back to main menu
-		`, ui.ModaleTypeInfo)
+	absPath, _ := homedir.Expand("~")
 
-	uiEvents := termui.PollEvents()
-	for {
-		e := <-uiEvents
-		switch e.ID {
-		case "<C-c>":
-			c.Screen.Stop()
-			return
-		case "<Enter>":
-			c.Screen.Stop()
-			return
-		case "<Escape>":
-			c.Screen.Restore()
-			return
-		}
+	builder := &Builder{
+		form:            ui.NewForm(),
+		screen:          c.Screen,
+		settings:        config.Settings,
+		skipMap:         make(map[string]struct{}),
+		stringQuestions: make(map[string]*widgets.TextField),
+		boolQuestions:   make(map[string]*widgets.Checkbox),
+		configApp:       c.ConfigApp,
+		command:         config.Commands[t],
+		forcedPath:      &absPath,
 	}
+
+	builder.SetupBuild(c.Screen)
 }
