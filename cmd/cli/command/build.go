@@ -10,12 +10,15 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/jcalmat/bob/cmd/cli/ui"
 	"github.com/jcalmat/bob/pkg/config"
 	"github.com/jcalmat/bob/pkg/file"
 	"github.com/jcalmat/termui/v3"
 	"github.com/jcalmat/termui/v3/widgets"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 type Builder struct {
@@ -28,6 +31,8 @@ type Builder struct {
 	stringQuestions map[string]*widgets.TextField
 	boolQuestions   map[string]*widgets.Checkbox
 	skipMap         map[string]struct{}
+	// forcedPath will prevent the user to change the path
+	forcedPath *string
 }
 
 // predefine functions used in go-template
@@ -47,7 +52,7 @@ var funcMap = template.FuncMap{
 	},
 
 	"title": func(s string) string {
-		return strings.Title(s)
+		return cases.Title(language.Und).String(s)
 	},
 }
 
@@ -74,31 +79,38 @@ func (c Command) Build(args ...string) {
 		command:         globalConfig.Commands[cmd],
 	}
 
-	err = builder.ParseSubConfigSpecs(cmd)
+	builder.form.SetTitle(cmd)
+
+	builder.SetupBuild(c.Screen)
+}
+
+func (b Builder) SetupBuild(screen *ui.Screen) {
+	var infos strings.Builder
+
+	err := b.ParseSubConfigSpecs()
 	if err != nil {
-		c.Screen.RenderModale(err.Error(), ui.ModaleTypeErr)
+		screen.RenderModale(err.Error(), ui.ModaleTypeErr)
 		return
 	}
 
-	builder.form.SetTitle(cmd)
-
-	if builder.command.Git != "" {
-		infos.WriteString(fmt.Sprintf("Cloning template from: %s\n\n", builder.command.Git))
+	if b.command.Git != "" {
+		infos.WriteString(fmt.Sprintf("Cloning template from: %s\n\n", b.command.Git))
 	} else {
-		infos.WriteString(fmt.Sprintf("Using template path: %s\n\n", builder.command.Path))
+		infos.WriteString(fmt.Sprintf("Using template path: %s\n\n", b.command.Path))
 	}
-	path := widgets.NewTextField("Where do you want to copy this template? ")
+
+	pathWidget := widgets.NewTextField("Where do you want to copy this template? ")
 
 	infos.WriteString(fmt.Sprintf("Current path: %s\n\n", file.GetWorkingDirectory()))
 
 	closeButton := widgets.NewButton("Done", func() {
-		err := builder.ProcessBuild(path)
+		err := b.ProcessBuild(pathWidget)
 		if err != nil {
-			c.Screen.RenderModale(err.Error(), ui.ModaleTypeErr)
+			screen.RenderModale(err.Error(), ui.ModaleTypeErr)
 			return
 		}
 
-		c.Screen.RenderModale(`
+		screen.RenderModale(`
 			Done
 			Press Enter to quit
 			Esc to get back to main menu
@@ -109,36 +121,49 @@ func (c Command) Build(args ...string) {
 			e := <-uiEvents
 			switch e.ID {
 			case "<C-c>":
-				c.Screen.Stop()
+				screen.Stop()
 				return
 			case "<Enter>":
-				c.Screen.Stop()
+				screen.Stop()
 				return
 			case "<Escape>":
-				c.Screen.Restore()
-				c.Screen.Restore()
+				screen.Restore()
+				screen.Restore()
 				return
 			}
 		}
 	})
 
-	nodes := []*widgets.FormNode{
-		{
-			Item: path,
-		},
-		{
-			Item: widgets.NewLabel(""),
-		},
-		{
-			Item: widgets.NewLabel("==== Variable replacement ===="),
-		},
-		{
-			Item: widgets.NewLabel(""),
-		},
+	nodes := make([]*widgets.FormNode, 0)
+	// path is not forced, ask the user to choose
+	if b.forcedPath == nil {
+		nodes = append(nodes, []*widgets.FormNode{
+			{
+				Item: pathWidget,
+			},
+			{
+				Item: widgets.NewLabel(""),
+			},
+		}...)
 	}
 
-	for _, v := range builder.command.Variables {
-		nodes = append(nodes, builder.parseQuestion(v))
+	nodes = append(nodes, []*widgets.FormNode{
+		{
+			Item: widgets.NewLabel(" ----------------------"),
+		},
+		{
+			Item: widgets.NewLabel(" -  Customize fields  -"),
+		},
+		{
+			Item: widgets.NewLabel(" ----------------------"),
+		},
+		{
+			Item: widgets.NewLabel(""),
+		},
+	}...)
+
+	for _, v := range b.command.Variables {
+		nodes = append(nodes, b.parseQuestion(v))
 	}
 
 	nodes = append(nodes, &widgets.FormNode{
@@ -149,19 +174,19 @@ func (c Command) Build(args ...string) {
 		Item: closeButton,
 	})
 
-	for _, v := range builder.command.Skip {
-		builder.skipMap[v] = struct{}{}
+	for _, v := range b.command.Skip {
+		b.skipMap[v] = struct{}{}
 	}
 
-	builder.form.SetNodes(nodes)
-	builder.form.SetInfos(infos.String())
-	c.Screen.SetForm(builder.form)
-	builder.form.Render()
+	b.form.SetNodes(nodes)
+	b.form.SetInfos(infos.String())
+	screen.SetForm(b.form)
+	b.form.Render()
 }
 
 // ParseSubconfigSpecs will look for bobconfig file inside the template itself
 // and parse it if found
-func (b *Builder) ParseSubConfigSpecs(cmd string) error {
+func (b *Builder) ParseSubConfigSpecs() error {
 	err := b.Clone()
 	if err != nil {
 		return err
@@ -192,8 +217,19 @@ func (b *Builder) Clone() error {
 		return fmt.Errorf("failed to create temp dir: %s", err.Error())
 	}
 
+	gitSplits := strings.Split(b.command.Git, " ")
+	var url, branch string
+	if len(gitSplits) == 2 {
+		url = gitSplits[0]
+		branch = gitSplits[1]
+	} else {
+		url = gitSplits[0]
+		branch = "master"
+	}
+
 	cloneOpts := &git.CloneOptions{
-		URL: b.command.Git,
+		URL:           url,
+		ReferenceName: plumbing.ReferenceName(fmt.Sprintf("refs/heads/%s", branch)),
 		// Progress: &infos,
 	}
 
@@ -309,7 +345,12 @@ func (b *Builder) ProcessBuild(path *widgets.TextField) error {
 		return err
 	}
 
-	err = file.Move(b.temporaryPath, path.Answer(), b.command.Skip)
+	finalPath := path.Answer()
+	if b.forcedPath != nil {
+		finalPath = *b.forcedPath
+	}
+
+	err = file.Move(b.temporaryPath, finalPath, b.command.Skip)
 	if err != nil {
 		return err
 	}

@@ -24,6 +24,9 @@ func (c Command) BuildMenu(args ...string) {
 	menu.AddOptions(options)
 
 	menu.Options.Title = "Build menu"
+
+	menu.Build()
+
 	c.Screen.SetMenu(menu)
 
 	menu.Render()

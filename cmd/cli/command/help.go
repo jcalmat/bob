@@ -52,13 +52,8 @@ func (c Command) Help(args ...string) {
 
 			commands:
 			  test:
-			    templates:
-			      - test
-			
-			templates:
-			  test:
 			    path: "/path/to/example.js"
-			    variables:
+			    vars:
 			      - name: "my_variable"
 			        type: "string"
 			
@@ -107,6 +102,9 @@ func (c Command) Help(args ...string) {
 
 	menu.Options.Title = "Help"
 	menu.Description.Title = ""
+
+	menu.Build()
+
 	c.Screen.SetMenu(menu)
 	menu.Render()
 }

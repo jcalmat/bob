@@ -27,6 +27,17 @@ type Modale struct {
 func NewModale(s string, t ModaleType) *Modale {
 	p := widgets.NewParagraph()
 	p.Text = s
+	switch t {
+	case ModaleTypeInfo:
+		p.TitleStyle.Fg = ui.ColorGreen
+		p.Title = "Info"
+	case ModaleTypeErr:
+		p.TitleStyle.Fg = ui.ColorRed
+		p.Title = "Error"
+	case ModaleTypeWrn:
+		p.TitleStyle.Fg = ui.ColorYellow
+		p.Title = "Warning"
+	}
 	return &Modale{
 		Text: p,
 		Type: t,

@@ -54,12 +54,11 @@ func (h *Header) buildHelp() *widgets.Paragraph {
 	help.Title = "Help"
 	help.Text = `
     -----------------------------
-    -        Move around        -
+    -       How to use it       -
     -----------------------------
-    go up                 ▲
-    go down               ▼
-    go back               'escape'
+    navigate              ▲/▼
     select                'enter'
+    go back               'escape'
     quit without saving   'ctrl+c'
 `
 
